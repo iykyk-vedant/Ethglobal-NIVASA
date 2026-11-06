@@ -184,7 +184,7 @@ export default function OrderDetailPage({ params }: OrderPageProps) {
       setStatusAnnouncement('Simulated payment confirmed. Enqueuing Hedera allocation job.');
       await fetchOrder(true);
 
-      // Trigger cron worker to process job immediately for seamless demo
+      // Trigger cron worker to process job immediately in demo environment
       handleRunWorker();
     } catch (err: any) {
       alert(`Error confirming payment: ${err.message}`);
