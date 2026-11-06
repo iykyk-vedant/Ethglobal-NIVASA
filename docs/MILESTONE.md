@@ -308,14 +308,14 @@
 **Goal:** A stranger can verify, not trust.
 **Refs:** ARCH §13 · PRD FR-7.x · UI §8.9, §8.10, §11.3
 
-- [ ] M11.1 `lib/verify/checks.ts`: **pure functions with injected readers** for C1–C7 (ARCH §13.1). Result = PASS | FAIL | UNAVAILABLE + evidence link + checked-at + "what this does not prove". **Chain failure/unreachable ⇒ UNAVAILABLE, never PASS.**
-- [ ] M11.2 Publish the **synthetic rights document** and **hashes-only manifest** for the page; data only via `public_offering_view`; ~30 s cache; rate-limited; no secrets/personal data.
-- [ ] M11.3 `/verify/offering/[id]` (no login): header with summary like "5 PASS · 1 FAIL · 1 UNAVAILABLE" (never a blanket "verified" badge), `VerificationSummary`, `VerificationCheckCard` ×7 with expandable technical details and copy controls.
-- [ ] M11.4 `/verify/receipt/[token]`: units, price snapshot, signed rights version/hash, signature-recovers-to-wallet, allocation tx link, on-chain balance ≥ units, **shortened wallet only**, no name/email.
-- [ ] M11.5 Footer: technical integrity check; not proof of title/legal validity/suitability.
-- [ ] M11.6 Tests (ARCH §13.4): one-byte change to rights doc ⇒ C1 FAIL; one manifest hash changed ⇒ C2 FAIL; DB row unpaused but asset paused ⇒ C4 FAIL; chain reader disconnected ⇒ all chain-dependent checks UNAVAILABLE.
+- [x] M11.1 `lib/verify/checks.ts`: **pure functions with injected readers** for C1–C7 (ARCH §13.1). Result = PASS | FAIL | UNAVAILABLE + evidence link + checked-at + "what this does not prove". **Chain failure/unreachable ⇒ UNAVAILABLE, never PASS.**
+- [x] M11.2 Publish the **synthetic rights document** and **hashes-only manifest** for the page; data only via `public_offering_view`; ~30 s cache; rate-limited; no secrets/personal data.
+- [x] M11.3 `/verify/offering/[id]` (no login): header with summary like "5 PASS · 1 FAIL · 1 UNAVAILABLE" (never a blanket "verified" badge), `VerificationSummary`, `VerificationCheckCard` ×7 with expandable technical details and copy controls.
+- [x] M11.4 `/verify/receipt/[token]`: units, price snapshot, signed rights version/hash, signature-recovers-to-wallet, allocation tx link, on-chain balance ≥ units, **shortened wallet only**, no name/email.
+- [x] M11.5 Footer: technical integrity check; not proof of title/legal validity/suitability.
+- [x] M11.6 Tests (ARCH §13.4): one-byte change to rights doc ⇒ C1 FAIL; one manifest hash changed ⇒ C2 FAIL; DB row unpaused but asset paused ⇒ C4 FAIL; chain reader disconnected ⇒ all chain-dependent checks UNAVAILABLE.
 
-**Exit:** page runs C1–C7 on real data; all four tamper tests behave as specified.
+**Exit:** page runs C1–C7 on real data; all four tamper tests behave as specified. [PASS - test/m11-verify-pages.test.ts 20/20 green; live Hedera contract 0.0.11330441 verified]
 
 ---
 
@@ -426,7 +426,7 @@ Track and update with results: live deadline + prize requirements · ETHGlobal r
 
 | Date/time (IST) | Milestone.Task | Status | Evidence (tx ID / test / file) | Notes / deviations |
 | --- | --- | --- | --- | --- |
-| | | | | |
+| 2026-11-06 18:35 | M11 (D3 Verify Pages) | DONE | `test/m11-verify-pages.test.ts` (20/20 pass), 8 responsive screenshots in `docs/screenshots/m11/` | C1–C7 pure checks, zero-PII receipts, 4 tamper tests, rate-limited public APIs |
 
 ---
 
