@@ -16,23 +16,28 @@ export interface AuthenticatedContext {
 /**
  * Extracts the Supabase access token from Authorization header or cookie.
  */
-export function extractAccessToken(req: NextRequest | Headers): string | null {
-  const headers = req instanceof NextRequest ? req.headers : req;
-  const authHeader = headers.get('authorization') || headers.get('Authorization');
+export function extractAccessToken(req: NextRequest | Headers | Request): string | null {
+  const headers = ('headers' in req && req.headers && typeof (req.headers as Headers).get === 'function')
+    ? (req.headers as Headers)
+    : (req as Headers);
+
+  const authHeader = typeof headers.get === 'function'
+    ? (headers.get('authorization') || headers.get('Authorization'))
+    : null;
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.slice(7).trim();
   }
 
-  // Check cookie if request is NextRequest
-  if (req instanceof NextRequest) {
-    // Also allow demo-token or x-demo-user-id in test/demo mode
-    const demoHeader = req.headers.get('x-demo-user-id');
-    if (demoHeader && process.env.NODE_ENV !== 'production') {
-      return `demo-user-${demoHeader}`;
-    }
+  // Also check demo header in non-production
+  const demoHeader = typeof headers.get === 'function' ? headers.get('x-demo-user-id') : null;
+  if (demoHeader && process.env.NODE_ENV !== 'production') {
+    return `demo-user-${demoHeader}`;
+  }
 
-    const cookies = req.cookies;
+  // Check cookies if request has cookies
+  if ('cookies' in req && req.cookies) {
+    const cookies = req.cookies as NextRequest['cookies'];
     // Standard Supabase cookie names
     const sbToken = cookies.get('sb-access-token')?.value;
     if (sbToken) return sbToken;
