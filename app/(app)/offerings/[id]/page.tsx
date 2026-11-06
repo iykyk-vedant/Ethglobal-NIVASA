@@ -17,6 +17,7 @@ import { OfferingRightsSection } from '@/components/offering/OfferingRightsSecti
 import { AtsAssetSummary } from '@/components/offering/AtsAssetSummary';
 import { SupplySummary } from '@/components/offering/SupplySummary';
 import { ResumeOfferingButton } from '@/components/offering/ResumeOfferingButton';
+import { AppShell } from '@/components/shell/AppShell';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -134,7 +135,9 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
     (!latestEpisode || latestSnapshot.snapshot_no > latestEpisode.snapshot_to);
 
   return (
-    <div className="space-y-6 pb-12" data-testid="offering-detail-page">
+    <AppShell initialRole="investor">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <div className="space-y-8 pb-12" data-testid="offering-detail-page">
       {/* Breadcrumb Navigation */}
       <Breadcrumbs
         items={[
@@ -215,9 +218,9 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
       )}
 
       {/* Main Grid: Left 2 cols (Overview + D1 Gate + Rights), Right 1 col (Chain + Supply + Order) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 items-start gap-6 xl:gap-8">
         {/* Left Column: 2 Spans */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="xl:col-span-2 space-y-6">
           {/* Asset Overview */}
           <div className="border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--surface-primary)] shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
@@ -401,6 +404,8 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
 
       {/* Canonical Offering UI-State Table (UI §8.2) */}
       <OfferingUIStateTable currentStatus={offering.status} />
+      </div>
     </div>
+    </AppShell>
   );
 }
