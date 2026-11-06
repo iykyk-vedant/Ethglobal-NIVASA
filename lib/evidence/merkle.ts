@@ -79,3 +79,4 @@ export function computeMerkleRoot(leaves: string[]): string {
 
   return currentLevel[0];
 }
+

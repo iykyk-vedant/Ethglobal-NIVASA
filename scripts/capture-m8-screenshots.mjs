@@ -43,3 +43,4 @@ for (const page of pages) {
 }
 
 console.log('Done capturing M8 screenshots.');
+

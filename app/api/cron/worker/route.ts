@@ -1,6 +1,6 @@
 /**
  * POST /api/cron/worker
- * ARCH §14.3 · PRD FR-6.5 · PLAN M4.5, M5.8
+ * ARCH §14.3 · PRD FR-6.5 · PLAN M4.5, M5.8, M9.3
  *
  * Background worker execution endpoint protected strictly by CRON_SECRET.
  * Bounded work per invocation (max 5 jobs) to guarantee execution within platform timeouts.
@@ -17,6 +17,10 @@ import {
   processReconcileSupply,
   processStuckOrders,
 } from '@/lib/settlement/jobs/maintenance';
+import { processSetRightsDocument } from '@/lib/settlement/jobs/set-rights-document';
+import { processSetManifestDocument } from '@/lib/settlement/jobs/set-manifest-document';
+import { processVerifyActivation } from '@/lib/settlement/jobs/verify-activation';
+import { processPauseAsset } from '@/lib/settlement/jobs/pause-asset';
 import { formatErrorResponse, AppError, ErrorCodes } from '@/lib/validation/errors';
 
 export async function POST(req: NextRequest) {
@@ -75,6 +79,22 @@ export async function POST(req: NextRequest) {
 
           case 'stuck_orders':
             output = await processStuckOrders();
+            break;
+
+          case 'set_rights_document':
+            output = await processSetRightsDocument(job.payload as any);
+            break;
+
+          case 'set_manifest_document':
+            output = await processSetManifestDocument(job.payload as any);
+            break;
+
+          case 'verify_activation':
+            output = await processVerifyActivation(job.payload as any);
+            break;
+
+          case 'pause_asset':
+            output = await processPauseAsset(job.payload as any);
             break;
 
           default:

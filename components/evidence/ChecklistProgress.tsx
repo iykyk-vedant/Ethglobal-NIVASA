@@ -52,3 +52,4 @@ export function ChecklistProgress({
     </div>
   );
 }
+

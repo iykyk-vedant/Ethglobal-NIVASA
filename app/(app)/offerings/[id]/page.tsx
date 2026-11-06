@@ -2,8 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAdminDbClient } from '@/lib/db/admin';
-import { readTokenSupply } from '@/lib/hedera/chain-reads';
-import { getHederaConfig, getHashScanTxUrl } from '@/lib/hedera/config';
+import { readTokenSupply, readPauseState } from '@/lib/hedera/chain-reads';
+import { getHederaConfig } from '@/lib/hedera/config';
 import { formatINR, toMoneyString } from '@/lib/money/decimal';
 import { Breadcrumbs } from '@/components/shell/Breadcrumbs';
 import { Badge } from '@/components/ui/Badge';
@@ -13,6 +13,10 @@ import { EvidenceDriftBanner } from '@/components/offering/EvidenceDriftBanner';
 import { OfferingUIStateTable } from '@/components/offering/OfferingUIStateTable';
 import { ParticipationPanel } from '@/components/offering/ParticipationPanel';
 import { DemoOrderForm } from '@/components/offering/DemoOrderForm';
+import { ActivationGateChecklist } from '@/components/offering/ActivationGateChecklist';
+import { OfferingRightsSection } from '@/components/offering/OfferingRightsSection';
+import { AtsAssetSummary } from '@/components/offering/AtsAssetSummary';
+import { SupplySummary } from '@/components/offering/SupplySummary';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,13 +46,21 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
     .eq('id', offering.property_id)
     .single();
 
-  // 3. Fetch Active Rights Document
-  const { data: rights } = await admin
+  // 3. Fetch Rights Documents
+  const { data: allRights = [] } = await admin
     .from('offering_rights')
     .select('*')
     .eq('offering_id', offering.id)
-    .eq('version', offering.current_rights_version)
-    .single();
+    .order('version', { ascending: false });
+
+  const rights =
+    allRights?.find((r) => r.version === offering.current_rights_version) ||
+    allRights?.[0] ||
+    null;
+
+  const previousRights =
+    allRights?.find((r) => r.version === (offering.current_rights_version - 1)) ||
+    null;
 
   // 4. Fetch Evidence Manifest
   const { data: manifest } = await admin
@@ -59,14 +71,22 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
     .limit(1)
     .single();
 
-  // 5. Fetch on-chain supply from Hedera Testnet ATS contract
-  const chainSupplyResult = await readTokenSupply(offering.token_evm_address || offering.token_contract_id);
+  // 5. Fetch on-chain supply & pause state from Hedera ATS contract
+  const assetTarget = offering.token_evm_address || offering.token_contract_id;
+  const [chainSupplyResult, pauseResult] = await Promise.all([
+    readTokenSupply(assetTarget),
+    readPauseState(assetTarget),
+  ]);
+
+  const chainSupplyNum = chainSupplyResult.status === 'CONFIRMED'
+    ? Number(chainSupplyResult.data?.totalUnits ?? 0n)
+    : 0;
+
   const chainSupplyStr = chainSupplyResult.status === 'CONFIRMED'
-    ? chainSupplyResult.data?.totalUnits?.toString() || '0'
+    ? chainSupplyNum.toString()
     : 'Pending sync';
 
-  // 6. Check demo investor eligibility and wallet status
-  // Rahul Mehta (seeded eligible investor)
+  // 6. Check demo investor eligibility and wallet status (Rahul Mehta)
   const DEMO_INVESTOR_ID = '2a1b3a8b-8215-4111-9a76-7b3b6f51b109';
   const { data: investorProfile } = await admin
     .from('profiles')
@@ -87,12 +107,7 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
   const grossYieldPercent = '7.20%';        // Rent ÷ Valuation = 7.20%
 
   const totalUnitsInt = parseInt(offering.total_units || '10000', 10);
-  const remainingSupply = totalUnitsInt; // In demo offering, initial remaining supply
-
-  const config = getHederaConfig();
-  const hashScanContractUrl = offering.token_contract_id
-    ? `https://hashscan.io/testnet/contract/${offering.token_contract_id}`
-    : null;
+  const remainingSupply = Math.max(0, totalUnitsInt - chainSupplyNum);
 
   return (
     <div className="space-y-6 pb-12" data-testid="offering-detail-page">
@@ -139,9 +154,9 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
         <EvidenceDriftBanner driftDate={offering.updated_at} />
       )}
 
-      {/* Main Grid: Asset Overview & Financial Metrics */}
+      {/* Main Grid: Left 2 cols (Overview + D1 Gate + Rights), Right 1 col (Chain + Supply + Order) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: 2 Spans (Asset overview + Rights + Evidence) */}
+        {/* Left Column: 2 Spans */}
         <div className="lg:col-span-2 space-y-6">
           {/* Asset Overview */}
           <div className="border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--surface-primary)] shadow-sm space-y-4">
@@ -200,54 +215,26 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
             </div>
           </div>
 
-          {/* Rights Summary Panel */}
-          <div className="border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--surface-primary)] shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-              <h2 className="text-base font-semibold text-[var(--text-primary)]">
-                Demo Rights Summary (v{rights?.version || 1})
-              </h2>
-              <span className="text-xs font-mono text-[var(--text-secondary)]">
-                Hash: {rights?.rights_document_hash?.slice(0, 10)}...{rights?.rights_document_hash?.slice(-8)}
-              </span>
-            </div>
+          {/* D1 Activation Gate Checklist (ARCH §11.2) */}
+          <ActivationGateChecklist
+            offeringId={offering.id}
+            currentStatus={offering.status}
+            activationChecks={offering.activation_checks}
+            rightsVersion={offering.current_rights_version}
+            storedRightsHash={rights?.rights_document_hash}
+            approvedManifestRoot={manifest?.merkle_root}
+          />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-3.5 rounded bg-[var(--surface-sunken)] border border-[var(--border-subtle)] space-y-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--status-success)] flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[var(--status-success)]" />
-                  What This Token Represents
-                </span>
-                <p className="text-[var(--text-secondary)] leading-relaxed">
-                  {rights?.income_entitlement_rule || 'Quarterly proportional rental income distribution.'}
-                  Subject exclusively to the terms of the versioned rights document.
-                </p>
-              </div>
+          {/* Offering Rights Management & Versioning Section (ARCH §11.1, §11.3) */}
+          <OfferingRightsSection
+            offeringId={offering.id}
+            currentRights={rights}
+            previousRights={previousRights}
+            allVersions={allRights || []}
+            canPropose={true}
+          />
 
-              <div className="p-3.5 rounded bg-[var(--surface-sunken)] border border-[var(--border-subtle)] space-y-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--status-danger)] flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[var(--status-danger)]" />
-                  What This Token Does NOT Represent
-                </span>
-                <p className="text-[var(--text-secondary)] leading-relaxed">
-                  {rights?.voting_or_control_rights || 'Non-voting fractional economic entitlement.'}
-                  Does NOT convey physical land deed, title clearance, or operational control of the property.
-                </p>
-              </div>
-            </div>
-
-            <div className="text-xs text-[var(--text-secondary)] space-y-1 pt-1">
-              <div className="flex justify-between border-t border-[var(--border-subtle)] pt-2">
-                <span>Transferability:</span>
-                <span className="font-medium text-[var(--text-primary)]">Restricted to KYC-verified wallets on Chain 296</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Liquidity / Redemption:</span>
-                <span className="font-medium text-[var(--text-primary)]">10-year liquidity exit window</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Evidence Panel */}
+          {/* Evidence Verification State */}
           <div className="border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--surface-primary)] shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <h2 className="text-base font-semibold text-[var(--text-primary)]">
@@ -290,68 +277,26 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
           </div>
         </div>
 
-        {/* Right Column: Token/Chain Panel, Participation & Order Form */}
+        {/* Right Column: ATS Asset, Supply, Participation & Order Form */}
         <div className="space-y-6">
-          {/* Token / Chain Panel */}
-          <div className="border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--surface-primary)] shadow-sm space-y-3">
-            <h2 className="text-base font-semibold text-[var(--text-primary)] border-b border-[var(--border-subtle)] pb-2.5">
-              Hedera ATS Token &amp; Chain Panel
-            </h2>
+          {/* ATS Asset Summary */}
+          <AtsAssetSummary
+            atsAssetRef={offering.ats_asset_ref || 'PROPERTY-MH-001'}
+            tokenContractId={offering.token_contract_id || '0.0.11330441'}
+            tokenEvmAddress={offering.token_evm_address || '0x52ed835e649a4b045a21bc5e240623d8a77f73ef'}
+            chainId={offering.chain_id || 296}
+            isPaused={pauseResult.data ?? false}
+            configurationHash={offering.configuration_hash}
+            lastSyncAt={pauseResult.lastSyncAt}
+          />
 
-            <div className="space-y-2 text-xs font-mono">
-              <div className="flex justify-between">
-                <span className="text-[var(--text-secondary)] font-sans">Network:</span>
-                <span className="text-[var(--text-primary)]">Hedera Testnet (296)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-secondary)] font-sans">Asset Ref:</span>
-                <span className="text-[var(--text-primary)]">{offering.ats_asset_ref}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[var(--text-secondary)] font-sans">ATS Contract:</span>
-                <span className="text-[var(--text-primary)]">
-                  {offering.token_contract_id || '0.0.11330441'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[var(--text-secondary)] font-sans">EVM Address:</span>
-                <span className="text-[var(--text-primary)] text-[11px]" title={offering.token_evm_address}>
-                  {offering.token_evm_address?.slice(0, 8)}...{offering.token_evm_address?.slice(-6)}
-                </span>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)] pt-2 space-y-1">
-                <div className="flex justify-between font-sans">
-                  <span className="text-[var(--text-secondary)]">Approved Cap:</span>
-                  <span className="font-semibold text-[var(--text-primary)]">{offering.total_units} units</span>
-                </div>
-                <div className="flex justify-between font-sans">
-                  <span className="text-[var(--text-secondary)]">Chain-Confirmed Supply:</span>
-                  <span className="font-bold text-[var(--status-success)]">
-                    {chainSupplyStr} units
-                  </span>
-                </div>
-                <div className="flex justify-between font-sans">
-                  <span className="text-[var(--text-secondary)]">Unit Price (INR):</span>
-                  <span className="font-semibold text-[var(--text-primary)]">₹{offering.unit_price_inr}</span>
-                </div>
-              </div>
-
-              {hashScanContractUrl && (
-                <div className="pt-2">
-                  <a
-                    href={hashScanContractUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-[var(--brand-forest)] hover:underline flex items-center gap-1 font-sans font-medium"
-                  >
-                    <span>View Contract on HashScan Explorer</span>
-                    <span aria-hidden="true">↗</span>
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Supply Summary */}
+          <SupplySummary
+            maxSupply={offering.total_units || '10000'}
+            chainConfirmedSupply={chainSupplyStr}
+            unitPriceInr={toMoneyString(offering.unit_price_inr)}
+            lastSyncAt={chainSupplyResult.lastSyncAt}
+          />
 
           {/* Investor Participation Action Panel */}
           <ParticipationPanel
