@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/session';
 import { getAdminDbClient, appendAuditLog } from '@/lib/db/admin';
-import fs from 'fs';
-import path from 'path';
+import { EVIDENCE_BUCKET } from '@/lib/evidence/storage';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -47,27 +46,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       reason: `Document ${doc.document_type} downloaded by roles [${auth.roles.join(', ')}]`,
     });
 
-    // 4. Resolve local file path
-    const localDir = path.resolve('storage/evidence', doc.property_id);
-    const files = fs.existsSync(localDir) ? fs.readdirSync(localDir) : [];
-    const matchedFile = files.find((f) => f.startsWith(documentId));
-
-    if (matchedFile) {
-      const filePath = path.join(localDir, matchedFile);
-      const fileBuffer = fs.readFileSync(filePath);
-
-      return new NextResponse(fileBuffer, {
-        headers: {
-          'Content-Type': doc.mime_type || 'application/octet-stream',
-          'Content-Disposition': `inline; filename="${doc.document_type}-${doc.sha256_hash.slice(0, 8)}.${doc.mime_type.split('/')[1] || 'bin'}"`,
-          'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-        },
-      });
-    }
-
-    // Fallback: If not in local storage, generate Supabase signed URL and redirect
-    const { data: signedData } = await adminDb.storage
-      .from('evidence-vault')
+    // Evidence binaries live in the private persistent bucket, never on
+    // serverless function disk. Return a short-lived URL only after auth checks.
+    const { data: signedData, error: signedError } = await adminDb.storage
+      .from(EVIDENCE_BUCKET)
       .createSignedUrl(doc.private_storage_path, 300);
 
     if (signedData?.signedUrl) {
@@ -75,8 +57,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json(
-      { error: 'FILE_NOT_FOUND', message: 'Document binary not found in storage.' },
-      { status: 404 }
+      { error: 'EVIDENCE_STORAGE_UNAVAILABLE', message: signedError?.message || 'Could not issue a private evidence link.' },
+      { status: 503 }
     );
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode || 500;

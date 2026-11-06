@@ -65,11 +65,18 @@ export function DocumentUploadDialog({
         body: formData,
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: { message?: string; serverHash?: string };
+      try {
+        data = JSON.parse(responseText) as { message?: string; serverHash?: string };
+      } catch {
+        throw new Error(`Upload service returned an unexpected response (HTTP ${res.status}). Please retry or contact the operator.`);
+      }
       if (!res.ok) {
-        throw new Error(data.message || 'Upload failed');
+        throw new Error(data.message || `Upload failed (HTTP ${res.status}).`);
       }
 
+      if (!data.serverHash) throw new Error('Upload response did not include the server-computed document hash.');
       setServerHash(data.serverHash);
       setTimeout(() => {
         onSuccess();

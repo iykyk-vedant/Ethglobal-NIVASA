@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getAdminDbClient } from '@/lib/db/admin';
 import { readHolderBalance } from '@/lib/hedera/chain-reads';
 import { getHashScanTxUrl } from '@/lib/hedera/config';
-import { formatINR, toMoneyString } from '@/lib/money/decimal';
+import { formatINR } from '@/lib/money/decimal';
 import { AppShell } from '@/components/shell/AppShell';
 import { PageContainer } from '@/components/shell/PageContainer';
 import { Breadcrumbs } from '@/components/shell/Breadcrumbs';
@@ -40,7 +40,7 @@ export default async function InvestorDashboardPage() {
   // 2. Fetch Active Demo Offering
   const { data: offering } = await admin
     .from('offerings')
-    .select('*')
+    .select('*, unit_price_inr_text:unit_price_inr::text')
     .eq('token_symbol', 'PROPERTY-MH-001')
     .single();
 
@@ -69,7 +69,7 @@ export default async function InvestorDashboardPage() {
   // 5. Fetch Investor Orders
   const { data: allOrders } = await admin
     .from('investment_orders')
-    .select('*')
+    .select('*, unit_price_inr_text:unit_price_inr::text, amount_inr_text:amount_inr::text')
     .eq('investor_id', DEMO_INVESTOR_ID)
     .order('created_at', { ascending: false });
 
@@ -290,7 +290,7 @@ export default async function InvestorDashboardPage() {
                 <div className="text-xs text-text-secondary font-mono flex flex-wrap gap-x-4 gap-y-1">
                   <span>ATS Contract: {offering?.token_contract_id || '0.0.11330441'}</span>
                   <span>Chain ID: 296</span>
-                  <span>Unit Price: ₹{offering?.unit_price_inr || '10,000'}</span>
+                  <span>Unit Price: {offering?.unit_price_inr_text ? formatINR(offering.unit_price_inr_text) : 'Pending'}</span>
                 </div>
               </div>
 
@@ -370,9 +370,9 @@ export default async function InvestorDashboardPage() {
                           {order.id.slice(0, 8)}...
                         </td>
                         <td className="py-3 px-3 text-text-primary">{order.units}</td>
-                        <td className="py-3 px-3">₹{order.unit_price_inr}</td>
+                        <td className="py-3 px-3">{formatINR(order.unit_price_inr_text)}</td>
                         <td className="py-3 px-3 font-semibold text-text-primary">
-                          {formatINR(order.amount_inr)}
+                          {formatINR(order.amount_inr_text)}
                         </td>
                         <td className="py-3 px-3">
                           <Badge variant="warning" className="text-[10px]">
@@ -445,7 +445,7 @@ export default async function InvestorDashboardPage() {
                           </td>
                           <td className="py-3 px-3 text-text-primary">{order.units}</td>
                           <td className="py-3 px-3 font-semibold text-text-primary">
-                            {formatINR(order.amount_inr)}
+                            {formatINR(order.amount_inr_text)}
                           </td>
                           <td className="py-3 px-3">
                             <Badge

@@ -75,7 +75,7 @@ No current 0G request ID is asserted by this README: the M15 adversarial run cou
 
 ## Database and security
 
-Apply the SQL migrations in `supabase/migrations/` to a disposable/local Supabase Postgres database, then load `supabase/seed.sql` as appropriate. Configure Supabase auth and test accounts before API integration tests. RLS must be exercised through user-scoped clients; service-role access is server-only. Database constraints enforce separation of duties and audit immutability. Chain writes go through the outbox worker; settlement completion requires reconciliation.
+Apply the SQL migrations in `supabase/migrations/` to the connected Supabase project, including the private `evidence-vault` bucket migration, then load `supabase/seed.sql` as appropriate. Evidence binaries are stored in that private persistent bucket; serverless function-local disk is not used. Configure Supabase auth and test accounts before API integration tests. RLS must be exercised through user-scoped clients; service-role access is server-only. Database constraints enforce separation of duties and audit immutability. Chain writes go through the outbox worker; settlement completion requires reconciliation.
 
 The M15 adversarial run currently fails; see [docs/adversarial-report.md](docs/adversarial-report.md). Observed missing profile setup, skipped integration suites, and missing 0G snapshots prevent claiming M15 acceptance. Do not treat prior milestone summaries as a substitute for this run.
 
