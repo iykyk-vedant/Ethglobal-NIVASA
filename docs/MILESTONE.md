@@ -338,12 +338,12 @@
 **Goal:** 0G explains what changed between two snapshots, citing evidence IDs.
 **Refs:** ARCH §16.3–16.10 · PRD FR-8.2–8.9 · UI §8.8
 
-- [ ] M13.1 `config/demo-events.json` (scripted event per ARCH §16.3) and `POST /api/demo/property-event` (admin, `DEMO_EVENTS=true`, audited, labelled simulated). Snapshots append-only, tied to a manifest.
-- [ ] M13.2 `lib/ai/delta.ts`: per-indicator from/to/absolute/percent change/direction/policy flag/supporting evidence IDs (unsupported indicators flagged); indicators per ARCH §16.4.
-- [ ] M13.3 `POST /api/ai/analyze-changes` using the richer schema, `previous_episode_id`, evidence-ID allowlist, number and causal-claim validation, every request ID recorded.
-- [ ] M13.4 UI (UI §8.8): provenance legend, snapshot selector/timeline, `SnapshotComparison`, `MetricDeltaTable` (percentage vs percentage-point; Improved/Weakened/Unchanged/Unsupported text labels), `AccessibleTrendChart` only if ≥ 3 snapshots (always with table fallback), `AiExplanationPanel`, `EvidenceCitationList`, `CannotDetermineList`, provenance footer (provider, model, request ID, input/output hash, timestamp, validation status).
-- [ ] M13.5 Reason to return: Property Updates feed + "new analysis available" prompt on input-hash change.
-- [ ] M13.6 Tests (D5): validator rejects invented number, cause absent from event note, evidence ID outside allowlist, malformed JSON.
+- [x] M13.1 `config/demo-events.json` (scripted event per ARCH §16.3) and `POST /api/demo/property-event` (admin, `DEMO_EVENTS=true`, audited, labelled simulated). Snapshots append-only, tied to a manifest.
+- [x] M13.2 `lib/ai/delta.ts`: per-indicator from/to/absolute/percent change/direction/policy flag/supporting evidence IDs (unsupported indicators flagged); indicators per ARCH §16.4.
+- [x] M13.3 `POST /api/ai/analyze-changes` using the richer schema, `previous_episode_id`, evidence-ID allowlist, number and causal-claim validation, every request ID recorded.
+- [x] M13.4 UI (UI §8.8): provenance legend, snapshot selector/timeline, `SnapshotComparison`, `MetricDeltaTable` (percentage vs percentage-point; Improved/Weakened/Unchanged/Unsupported text labels), `AccessibleTrendChart` only if ≥ 3 snapshots (always with table fallback), `AiExplanationPanel`, `EvidenceCitationList`, `CannotDetermineList`, provenance footer (provider, model, request ID, input/output hash, timestamp, validation status).
+- [x] M13.5 Reason to return: Property Updates feed + "new analysis available" prompt on input-hash change.
+- [x] M13.6 Tests (D5): validator rejects invented number, cause absent from event note, evidence ID outside allowlist, malformed JSON.
 
 **Exit:** scripted event → deterministic delta → validated, evidence-cited 0G explanation with real request ID.
 **Cut:** single-snapshot explanation (ladder #6).
