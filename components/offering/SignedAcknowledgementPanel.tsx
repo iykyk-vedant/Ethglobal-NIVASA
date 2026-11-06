@@ -18,6 +18,7 @@ export interface SignedAcknowledgementPanelProps {
   signature?: string;
   isSigning: boolean;
   onSign: () => void;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -36,6 +37,7 @@ export function SignedAcknowledgementPanel({
   signature,
   isSigning,
   onSign,
+  disabled = false,
   className = '',
 }: SignedAcknowledgementPanelProps) {
   const [copied, setCopied] = useState(false);
@@ -48,53 +50,44 @@ export function SignedAcknowledgementPanel({
 
   return (
     <div
-      className={`border border-[var(--border-subtle)] rounded-lg p-4 bg-[var(--surface-sunken)] space-y-3 ${className}`}
+      className={`p-3.5 bg-[var(--surface-sunken)] border border-[var(--border-subtle)] rounded space-y-3 ${className}`}
       data-testid="signed-acknowledgement-panel"
     >
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-          Investor EIP-191 Acknowledgement (ARCH §15.2)
-        </h4>
+      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
+        <span className="text-xs font-semibold text-[var(--text-primary)]">
+          Investor Acknowledgement & Demo Rights Version
+        </span>
         <button
           type="button"
           onClick={handleCopy}
-          className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors underline"
+          className="text-[11px] text-[var(--interactive-primary)] hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          {copied ? 'Copied message!' : 'Copy raw text'}
+          {copied ? 'Copied terms!' : 'Copy raw message'}
         </button>
       </div>
 
-      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-        Prior to order reservation, your bound wallet must sign the deterministic terms below.
-        The server verifies this cryptographic signature against current database values before locking units.
-      </p>
-
-      {/* Structured terms presentation */}
-      <div className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded p-3 text-xs space-y-1.5 font-mono text-[11px]">
-        <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Offering ID:</span>
-          <span className="text-[var(--text-primary)]">{offeringId}</span>
-        </div>
+      {/* Structured terms snapshot */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] font-mono">
         <div className="flex justify-between">
           <span className="text-[var(--text-secondary)]">Rights Version:</span>
-          <span className="text-[var(--text-primary)]">v{rightsVersion}</span>
+          <span className="font-semibold text-[var(--text-primary)]">v{rightsVersion}.0</span>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between">
           <span className="text-[var(--text-secondary)]">Rights Hash:</span>
-          <span className="text-[var(--text-primary)] truncate max-w-[200px]" title={rightsDocumentHash}>
-            {rightsDocumentHash.slice(0, 10)}...{rightsDocumentHash.slice(-8)}
+          <span className="text-[var(--text-primary)] truncate max-w-[120px]" title={rightsDocumentHash}>
+            {rightsDocumentHash ? `${rightsDocumentHash.slice(0, 10)}...` : 'N/A'}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Units to Reserve:</span>
-          <span className="text-[var(--text-primary)] font-bold">{units}</span>
+          <span className="text-[var(--text-secondary)]">Units:</span>
+          <span className="text-[var(--text-primary)]">{units || '0'}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--text-secondary)]">Unit Price:</span>
           <span className="text-[var(--text-primary)]">₹{unitPriceInr}</span>
         </div>
-        <div className="flex justify-between border-t border-[var(--border-subtle)] pt-1.5 font-sans font-semibold text-xs">
-          <span className="text-[var(--text-primary)]">Total Order Amount:</span>
+        <div className="flex justify-between">
+          <span className="text-[var(--text-secondary)]">Total Amount:</span>
           <span className="text-[var(--text-primary)]">₹{totalAmountInr}</span>
         </div>
         <div className="flex justify-between">
@@ -123,7 +116,7 @@ export function SignedAcknowledgementPanel({
             variant="secondary"
             onClick={onSign}
             isLoading={isSigning}
-            disabled={isSigning}
+            disabled={disabled || isSigning}
             className="w-full text-xs"
             data-testid="sign-acknowledgement-button"
           >

@@ -160,7 +160,10 @@ export class SdkAtsAdapter implements AtsAdapter {
     const config = getHederaConfig();
     const client = getDeployerClient();
     const bytes32Name = ethers.encodeBytes32String(name);
-    const bytes32Hash = hash.startsWith('0x') && hash.length === 66 ? hash : ethers.keccak256(ethers.toUtf8Bytes(hash));
+    const cleanHex = hash.startsWith('0x') ? hash.slice(2) : hash;
+    const bytes32Hash = cleanHex.length === 64 && /^[0-9a-fA-F]{64}$/.test(cleanHex)
+      ? `0x${cleanHex.toLowerCase()}`
+      : ethers.keccak256(ethers.toUtf8Bytes(hash));
 
     const calldata = docIface.encodeFunctionData('setDocument', [bytes32Name, uri, bytes32Hash]);
 

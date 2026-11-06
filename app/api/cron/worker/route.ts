@@ -1,6 +1,6 @@
 /**
  * POST /api/cron/worker
- * ARCH §14.3 · PRD FR-6.5 · PLAN M4.5, M5.8, M9.3
+ * ARCH §14.3 · PRD FR-6.5 · PLAN M4.5, M5.8, M9.3, M10.1-M10.4
  *
  * Background worker execution endpoint protected strictly by CRON_SECRET.
  * Bounded work per invocation (max 5 jobs) to guarantee execution within platform timeouts.
@@ -21,7 +21,10 @@ import { processSetRightsDocument } from '@/lib/settlement/jobs/set-rights-docum
 import { processSetManifestDocument } from '@/lib/settlement/jobs/set-manifest-document';
 import { processVerifyActivation } from '@/lib/settlement/jobs/verify-activation';
 import { processPauseAsset } from '@/lib/settlement/jobs/pause-asset';
-import { formatErrorResponse, AppError, ErrorCodes } from '@/lib/validation/errors';
+import { processUnpauseAsset } from '@/lib/settlement/jobs/unpause-asset';
+import { processEvidenceDrift } from '@/lib/settlement/jobs/evidence-drift';
+import { processIntegrityCheck } from '@/lib/settlement/jobs/integrity-check';
+import { AppError, ErrorCodes } from '@/lib/validation/errors';
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,6 +100,18 @@ export async function POST(req: NextRequest) {
             output = await processPauseAsset(job.payload as any);
             break;
 
+          case 'unpause_asset':
+            output = await processUnpauseAsset(job.payload as any);
+            break;
+
+          case 'evidence_drift':
+            output = await processEvidenceDrift(job.payload as any);
+            break;
+
+          case 'integrity_check':
+            output = await processIntegrityCheck(job.payload as any);
+            break;
+
           default:
             throw new Error(`Unknown job type: "${job.type}"`);
         }
@@ -113,10 +128,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       workerId,
-      processedCount: jobs.length,
-      results,
+      processedCount: results.length,
+      jobs: results,
     });
-  } catch (err) {
-    return formatErrorResponse(err);
+  } catch (err: any) {
+    const status = err.statusCode || 500;
+    return NextResponse.json(
+      {
+        error: err.code || 'WORKER_EXECUTION_ERROR',
+        message: err.message || 'Worker batch execution failed',
+      },
+      { status }
+    );
   }
 }

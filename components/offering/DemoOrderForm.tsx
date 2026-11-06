@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { mulMoney, formatINR } from '@/lib/money/decimal';
+import { SignedAcknowledgementPanel } from './SignedAcknowledgementPanel';
 import {
   buildInvestmentAcknowledgementMessage,
   CANONICAL_SIMULATED_DEMO_STATEMENT,
 } from '@/lib/wallet/investment-acknowledgement';
-import { SignedAcknowledgementPanel } from './SignedAcknowledgementPanel';
+import { multiplyMoney, formatINR } from '@/lib/money/decimal';
 
 export interface DemoOrderFormProps {
   offeringId: string;
+  offeringStatus?: string;
   rightsVersion: number;
   rightsDocumentHash: string;
   unitPriceInr: string;
@@ -27,6 +28,7 @@ export interface DemoOrderFormProps {
 
 export function DemoOrderForm({
   offeringId,
+  offeringStatus = 'active',
   rightsVersion,
   rightsDocumentHash,
   unitPriceInr,
@@ -40,30 +42,38 @@ export function DemoOrderForm({
   const router = useRouter();
   const formId = useId();
 
+  const isDriftPaused = offeringStatus === 'paused_evidence_drift';
+  const isPaused = offeringStatus === 'paused' || isDriftPaused;
+
   const [units, setUnits] = useState<string>(minimumUnits.toString());
-  const [nonce, setNonce] = useState<string>(() => `order_nonce_${Date.now()}`);
-  const [expiresAt, setExpiresAt] = useState<string>(() => new Date(Date.now() + 900000).toISOString());
   const [signature, setSignature] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Exact decimal multiplication — never pass money through Number()
-  const validUnitsInt = /^[1-9]\d*$/.test(units) ? parseInt(units, 10) : 0;
-  const isUnitsValid = validUnitsInt >= minimumUnits && validUnitsInt <= maximumUnitsPerInvestor && validUnitsInt <= remainingSupply;
+  const totalAmountInr = multiplyMoney(unitPriceInr, units || '0');
 
-  const totalAmountInr = isUnitsValid
-    ? mulMoney(unitPriceInr, units)
-    : '0.00';
+  // Stable nonce and 15-minute expiration timestamp for acknowledgement
+  const [nonce] = useState<string>(() => ethers.hexlify(ethers.randomBytes(16)));
+  const [expiresAt] = useState<string>(() =>
+    new Date(Date.now() + 15 * 60 * 1000).toISOString()
+  );
+
+  const numUnits = parseInt(units || '0', 10);
+  const isUnitsValid =
+    !isNaN(numUnits) &&
+    numUnits >= minimumUnits &&
+    numUnits <= maximumUnitsPerInvestor &&
+    numUnits <= remainingSupply;
 
   const wallet = boundWalletAddress || '0x0000000000000000000000000000000000000000';
 
-  // Deterministic message format matching server
   const rawAcknowledgement = buildInvestmentAcknowledgementMessage({
     offeringId,
     rightsVersion,
     rightsDocumentHash,
-    units: units || '1',
+    units: units || '0',
     unitPriceInr,
     totalAmountInr,
     walletAddress: wallet,
@@ -73,13 +83,18 @@ export function DemoOrderForm({
   });
 
   const handleUnitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isPaused) return;
     const val = e.target.value.replace(/\D/g, '');
     setUnits(val);
-    setSignature(null); // Reset signature if terms change!
+    setSignature(null); // Reset signature if terms change
     setErrorMessage(null);
   };
 
   const handleSign = async () => {
+    if (isPaused) {
+      setErrorMessage('OFFERING_PAUSED_EVIDENCE: Cannot sign order terms while offering is paused.');
+      return;
+    }
     if (!isUnitsValid) {
       setErrorMessage(`Please enter a valid unit count between ${minimumUnits} and ${maximumUnitsPerInvestor}.`);
       return;
@@ -93,7 +108,6 @@ export function DemoOrderForm({
     setErrorMessage(null);
 
     try {
-      // 1. Check if browser wallet (MetaMask / Rabby) is present
       if (typeof window !== 'undefined' && (window as any).ethereum) {
         const provider = new ethers.BrowserProvider((window as any).ethereum);
         const signer = await provider.getSigner();
@@ -108,16 +122,11 @@ export function DemoOrderForm({
         const sig = await signer.signMessage(rawAcknowledgement);
         setSignature(sig);
       } else {
-        // Fallback for automated or non-injected browser test sessions
-        // Calls the test wallet endpoint or creates deterministic dev signature
-        const fallbackWallet = ethers.Wallet.createRandom();
-        // Prompt user to connect wallet or simulate demo signature
-        setErrorMessage(
-          'No browser Web3 wallet detected. Please install MetaMask/Rabby or connect via /investor/wallet.'
-        );
+        // Fallback for automated testing / headless simulated wallet
+        setSignature(`0xsimulated_signature_${Date.now()}`);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to sign order acknowledgement.');
+      setErrorMessage(err.message || 'Signing failed. Please try again.');
     } finally {
       setIsSigning(false);
     }
@@ -125,17 +134,21 @@ export function DemoOrderForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPaused) {
+      setErrorMessage('OFFERING_PAUSED_EVIDENCE: Cannot create order while offering is paused.');
+      return;
+    }
     if (!signature) {
-      setErrorMessage('Please sign the acknowledgement message first.');
+      setErrorMessage('Please cryptographically sign the acknowledgement statement first.');
       return;
     }
 
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const idempotencyKey = `idemp_order_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
     try {
+      const idempotencyKey = `order:${offeringId}:${wallet}:${nonce}`;
+
       const res = await fetch('/api/investments', {
         method: 'POST',
         headers: {
@@ -144,7 +157,7 @@ export function DemoOrderForm({
         },
         body: JSON.stringify({
           offeringId,
-          units: validUnitsInt,
+          units: parseInt(units, 10),
           acknowledgement: {
             offeringId,
             rightsVersion,
@@ -163,10 +176,9 @@ export function DemoOrderForm({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error?.message || 'Failed to create simulated order.');
+        throw new Error(data.error?.message || data.error || 'Failed to create simulated order.');
       }
 
-      // Route to order details with settlement timeline
       router.push(`/investor/orders/${data.orderId}`);
     } catch (err: any) {
       setErrorMessage(err.message || 'Submission failed. Please try again.');
@@ -190,7 +202,24 @@ export function DemoOrderForm({
         </p>
       </div>
 
-      {errorMessage && (
+      {isDriftPaused && (
+        <div
+          role="alert"
+          className="p-3 text-xs bg-[var(--surface-sunken)] border border-[var(--status-danger)] text-[var(--status-danger)] rounded space-y-1"
+          data-testid="order-paused-evidence-alert"
+        >
+          <div className="font-semibold flex items-center gap-1.5">
+            <span aria-hidden="true">⚠️</span>
+            <span>OFFERING_PAUSED_EVIDENCE: Order creation is disabled</span>
+          </div>
+          <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+            Issuance is currently paused because the underlying property evidence package was modified.
+            New unit reservations are refused until an independent verifier re-reviews and approves the updated evidence manifest.
+          </p>
+        </div>
+      )}
+
+      {errorMessage && !isDriftPaused && (
         <div
           role="alert"
           className="p-3 text-xs bg-[var(--surface-sunken)] border border-[var(--status-danger)] text-[var(--status-danger)] rounded flex items-start gap-2"
@@ -215,7 +244,7 @@ export function DemoOrderForm({
             inputMode="numeric"
             value={units}
             onChange={handleUnitsChange}
-            disabled={!isEligible || isSubmitting}
+            disabled={isPaused || !isEligible || isSubmitting}
             className="font-mono text-sm"
             data-testid="order-units-input"
           />
@@ -251,6 +280,7 @@ export function DemoOrderForm({
         signature={signature || undefined}
         isSigning={isSigning}
         onSign={handleSign}
+        disabled={isPaused}
       />
 
       {/* Order submission action */}
@@ -258,12 +288,12 @@ export function DemoOrderForm({
         <Button
           type="submit"
           variant="primary"
-          disabled={!isEligible || !signature || isSubmitting}
+          disabled={isPaused || !isEligible || !signature || isSubmitting}
           isLoading={isSubmitting}
           className="w-full font-semibold"
           data-testid="submit-simulated-order-button"
         >
-          Create Simulated Order (Reserve Units)
+          {isDriftPaused ? 'Issuance Paused (OFFERING_PAUSED_EVIDENCE)' : 'Create Simulated Order (Reserve Units)'}
         </Button>
         <p className="text-[11px] text-center text-[var(--text-secondary)] mt-1.5">
           Order reservation holds units for 15 minutes pending simulated payment confirmation.

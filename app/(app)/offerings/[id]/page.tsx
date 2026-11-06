@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAdminDbClient } from '@/lib/db/admin';
 import { readTokenSupply, readPauseState } from '@/lib/hedera/chain-reads';
-import { getHederaConfig } from '@/lib/hedera/config';
 import { formatINR, toMoneyString } from '@/lib/money/decimal';
 import { Breadcrumbs } from '@/components/shell/Breadcrumbs';
 import { Badge } from '@/components/ui/Badge';
@@ -17,6 +16,7 @@ import { ActivationGateChecklist } from '@/components/offering/ActivationGateChe
 import { OfferingRightsSection } from '@/components/offering/OfferingRightsSection';
 import { AtsAssetSummary } from '@/components/offering/AtsAssetSummary';
 import { SupplySummary } from '@/components/offering/SupplySummary';
+import { ResumeOfferingButton } from '@/components/offering/ResumeOfferingButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -141,6 +141,14 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
 
         <div className="flex items-center gap-3">
           <OfferingStateBadge status={offering.status} showTechnicalName />
+          {(offering.status === 'paused_evidence_drift' || offering.status === 'paused') && (
+            <ResumeOfferingButton
+              offeringId={offering.id}
+              offeringStatus={offering.status}
+              manifestVersion={manifest?.version}
+              merkleRoot={manifest?.merkle_root}
+            />
+          )}
           <Link href="/verify">
             <Button variant="outline" className="text-xs">
               Verify Evidence Integrity
@@ -151,7 +159,7 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
 
       {/* High-Visibility Evidence Drift Warning Banner */}
       {offering.status === 'paused_evidence_drift' && (
-        <EvidenceDriftBanner driftDate={offering.updated_at} />
+        <EvidenceDriftBanner driftDate={offering.paused_evidence_drift_at || offering.updated_at} />
       )}
 
       {/* Main Grid: Left 2 cols (Overview + D1 Gate + Rights), Right 1 col (Chain + Supply + Order) */}
@@ -321,6 +329,7 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
           {/* Simulated Order Form */}
           <DemoOrderForm
             offeringId={offering.id}
+            offeringStatus={offering.status}
             rightsVersion={offering.current_rights_version}
             rightsDocumentHash={rights?.rights_document_hash || ''}
             unitPriceInr={toMoneyString(offering.unit_price_inr)}

@@ -1,5 +1,5 @@
 import { getAdminDbClient, appendAuditLog } from '@/lib/db/admin';
-import { readDocument, readTokenSupply } from '@/lib/hedera/chain-reads';
+import { readDocument, readTokenSupply, readPauseState, clearChainReadCache } from '@/lib/hedera/chain-reads';
 
 export interface VerifyActivationPayload {
   offeringId: string;
@@ -68,13 +68,37 @@ export async function processVerifyActivation(payload: VerifyActivationPayload):
     .eq('version', offering.current_rights_version)
     .maybeSingle();
 
-  // 5. Read back ATS Asset State & Documents from Hedera Testnet
+  // 5. Read back ATS Asset State, Documents & Pause State from Hedera Testnet
   const assetTarget = offering.token_evm_address || offering.token_contract_id;
-  const [supplyResult, chainRightsResult, chainManifestResult] = await Promise.all([
+  clearChainReadCache();
+
+  let [supplyResult, chainRightsResult, chainManifestResult, pauseResult] = await Promise.all([
     readTokenSupply(assetTarget),
     readDocument('rights', assetTarget),
     readDocument('evidence-manifest', assetTarget),
+    readPauseState(assetTarget),
   ]);
+
+  // Mirror Node block indexing retry loop: up to 5 attempts (1s interval) if expected manifest root or pause state is pending
+  const expectedManifestRoot = normalizeHash(manifest?.merkle_root);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const actualManifestRoot = normalizeHash(chainManifestResult.data?.hash);
+    const manifestMatched = actualManifestRoot === expectedManifestRoot;
+    const pauseMatched = pauseResult.status === 'CONFIRMED' && pauseResult.data === false;
+
+    if (manifestMatched && pauseMatched) {
+      break;
+    }
+
+    await new Promise((r) => setTimeout(r, 1200));
+    clearChainReadCache();
+    [supplyResult, chainRightsResult, chainManifestResult, pauseResult] = await Promise.all([
+      readTokenSupply(assetTarget),
+      readDocument('rights', assetTarget),
+      readDocument('evidence-manifest', assetTarget),
+      readPauseState(assetTarget),
+    ]);
+  }
 
   const checks: ActivationCheckResult[] = [];
 
@@ -143,7 +167,6 @@ export async function processVerifyActivation(payload: VerifyActivationPayload):
   });
 
   // Condition 5: ATS asset holds document "evidence-manifest" == approved manifest root (ARCH §11.2.5)
-  const expectedManifestRoot = normalizeHash(manifest?.merkle_root);
   const actualManifestRoot = normalizeHash(chainManifestResult.data?.hash);
   const c5Passed =
     chainManifestResult.status === 'CONFIRMED' &&
@@ -176,6 +199,20 @@ export async function processVerifyActivation(payload: VerifyActivationPayload):
       : 'Eligibility policy version is missing.',
   });
 
+  // Condition 7: On-chain Asset Not Paused (ARCH §12.2 step 6)
+  const c7Passed = pauseResult.status === 'CONFIRMED' && pauseResult.data === false;
+  checks.push({
+    conditionId: 7,
+    name: 'On-Chain Asset Unpaused (isPaused=false)',
+    description: 'ATS token on Hedera Testnet must be in unpaused state before issuance is active.',
+    status: c7Passed ? 'PASS' : 'FAIL',
+    expected: 'isPaused = false',
+    actual: pauseResult.status === 'CONFIRMED' ? `isPaused=${pauseResult.data}` : `Mirror Node: ${pauseResult.status}`,
+    details: c7Passed
+      ? 'On-chain asset is confirmed unpaused.'
+      : (pauseResult.data === true ? 'Asset is currently paused on Hedera (D2 evidence-drift or admin pause).' : 'Could not confirm pause state from Mirror Node.'),
+  });
+
   const allPassed = checks.every((c) => c.status === 'PASS');
   const report: ActivationGateReport = {
     checkedAt,
@@ -183,33 +220,37 @@ export async function processVerifyActivation(payload: VerifyActivationPayload):
     checks,
   };
 
-  // ARCH §11.2 Invariant:
-  // ONLY the worker performs the transition to 'active' when all six conditions pass.
-  // If any check fails, offering remains in token_configured.
+  // ARCH §11.2 & §12.2 Invariant:
+  // ONLY the worker performs the transition to 'active' when all conditions pass.
+  // If any check fails, offering remains in token_configured or paused_evidence_drift.
   if (allPassed) {
+    const prevStatus = offering.status;
     await admin
       .from('offerings')
       .update({
         status: 'active',
         activation_checks: report as any,
+        drift_trigger: null,
+        paused_reason: null,
         updated_at: checkedAt,
       })
       .eq('id', offeringId);
 
     await appendAuditLog({
-      action: 'offering_activated',
+      action: prevStatus === 'paused_evidence_drift' ? 'offering_resumed' : 'offering_activated',
       resourceType: 'offering',
       resourceId: offeringId,
-      beforeHash: 'token_configured',
+      beforeHash: prevStatus,
       afterHash: 'active',
       reason: JSON.stringify({
         checkedAt,
         rightsHash: actualRightsHash,
         manifestRoot: actualManifestRoot,
+        isPaused: pauseResult.data,
       }),
     });
   } else {
-    // Fail-closed: record which condition failed, remain in token_configured
+    // Fail-closed: record which condition failed
     await admin
       .from('offerings')
       .update({
@@ -231,4 +272,3 @@ export async function processVerifyActivation(payload: VerifyActivationPayload):
 
   return report;
 }
-

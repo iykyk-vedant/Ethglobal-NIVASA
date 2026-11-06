@@ -339,7 +339,9 @@ describe('Milestone M9: Rights & D1 Activation Gate (Evidence-Gated Issuance)', 
     expect(chainRights.data?.hash.toLowerCase()).toBe(rightsJobResult.documentHash.toLowerCase());
 
     expect(chainManifest.status).toBe('CONFIRMED');
-    expect(chainManifest.data?.hash.toLowerCase()).toBe(manifestJobResult.merkleRoot.toLowerCase());
+    const cleanChainHash = chainManifest.data?.hash.toLowerCase().replace(/^0x/, '');
+    const cleanJobRoot = manifestJobResult.merkleRoot.toLowerCase().replace(/^0x/, '');
+    expect(cleanChainHash).toBe(cleanJobRoot);
   }, 45000); // 45-second timeout for Hedera Testnet consensus
 
   // -------------------------------------------------------------------------
@@ -351,7 +353,7 @@ describe('Milestone M9: Rights & D1 Activation Gate (Evidence-Gated Issuance)', 
     const report = await processVerifyActivation({ offeringId: PRIMARY_OFFERING_ID });
 
     expect(report.allPassed).toBe(true);
-    expect(report.checks).toHaveLength(6);
+    expect(report.checks).toHaveLength(7);
     report.checks.forEach((c) => {
       expect(c.status).toBe('PASS');
     });

@@ -53,11 +53,29 @@ function setCached<T>(key: string, result: ChainReadResult<T>): ChainReadResult<
 }
 
 /**
+ * Clears cached read entries (e.g. after on-chain pause, unpause, or document anchoring).
+ */
+export function clearChainReadCache(keyPrefix?: string): void {
+  if (!keyPrefix) {
+    cache.clear();
+    return;
+  }
+  for (const k of Array.from(cache.keys())) {
+    if (k.startsWith(keyPrefix)) {
+      cache.delete(k);
+    }
+  }
+}
+
+/**
  * Executes a read-only EVM contract call via Hedera Mirror Node.
  */
 async function callMirrorContract(toAddress: string, data: string): Promise<string> {
   const { mirrorNodeUrl } = getHederaConfig();
   const url = `${mirrorNodeUrl}/api/v1/contracts/call`;
+  const resolvedTarget = (!toAddress || (!toAddress.startsWith('0x') && !/^\d+\.\d+\.\d+$/.test(toAddress)))
+    ? getHederaConfig().assetAddress
+    : toAddress;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second network timeout
@@ -70,7 +88,7 @@ async function callMirrorContract(toAddress: string, data: string): Promise<stri
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        to: toAddress,
+        to: resolvedTarget,
         data,
       }),
       signal: controller.signal,

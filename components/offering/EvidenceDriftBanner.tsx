@@ -31,15 +31,19 @@ export function EvidenceDriftBanner({
         >
           ⚠️
         </span>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <h2 className="text-sm font-semibold text-[var(--status-danger)] tracking-wide uppercase">
-            Issuance Paused: Evidence Changed on {formattedDate} (Re-Review In Progress)
+            Issuance paused: evidence changed on {formattedDate}, re-review in progress.
           </h2>
           <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-            The property evidence manifest was modified after initial approval. Under NIVASA strict
-            integrity guardrails (ARCH §17.4), new unit reservations are refused and on-chain ATS
-            transfers on Hedera Testnet are paused until an independent verifier conducts a full
-            re-review and approves a revised evidence manifest.
+            New orders are refused immediately (<strong>OFFERING_PAUSED_EVIDENCE</strong>). Under NIVASA fail-closed
+            evidence integrity guardrails (ARCH §12, §17.4), issuance stops until an independent verifier re-reviews
+            and approves the revised evidence manifest.
+          </p>
+          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+            <strong>Hedera ATS Token Pause Semantics (Milestone M1 finding):</strong> As proven on Hedera Testnet
+            (<code>docs/ats-gate.md §4.1</code>), ATS v8 <code>Mint.sol</code> decorates issuance with the <code>onlyUnpaused</code> modifier.
+            Therefore, pausing the ATS Diamond asset on Hedera halts both <em>primary issuance</em> and <em>holder-to-holder transfers</em> on-chain.
           </p>
         </div>
       </div>

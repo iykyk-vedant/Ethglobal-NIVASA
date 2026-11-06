@@ -50,6 +50,7 @@ export const MANIFEST_STATUSES = [
   "approved",
   "rejected",
   "superseded",
+  "superseded-pending",
 ] as const;
 
 export type ManifestStatus = (typeof MANIFEST_STATUSES)[number];
@@ -57,9 +58,10 @@ export type ManifestStatus = (typeof MANIFEST_STATUSES)[number];
 export const MANIFEST_TRANSITIONS: Record<ManifestStatus, readonly ManifestStatus[]> = {
   draft: ["submitted"],
   submitted: ["approved", "rejected"],
-  approved: ["superseded"],
+  approved: ["superseded", "superseded-pending"],
+  "superseded-pending": ["superseded", "approved"],
   rejected: [],
-  superseded: [],
+  superseded: ["approved"],
 };
 
 // ---------------------------------------------------------------------------

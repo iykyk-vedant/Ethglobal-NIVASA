@@ -32,7 +32,8 @@ export interface OutboxJob {
 }
 
 export interface EnqueueJobParams {
-  type: string;
+  type?: string;
+  jobType?: string;
   dedupeKey: string;
   payload?: Record<string, any>;
   orderId?: string | null;
@@ -46,10 +47,11 @@ export interface EnqueueJobParams {
  * Idempotent: returns existing job if duplicate (type, dedupe_key) is already queued.
  */
 export async function enqueueOutboxJob(params: EnqueueJobParams | string, dedupeKeyArg?: string, payloadArg?: Record<string, any>): Promise<{ id: string; isDuplicate: boolean }> {
-  const p: EnqueueJobParams =
-    typeof params === 'string'
-      ? { type: params, dedupeKey: dedupeKeyArg || '', payload: payloadArg || {} }
-      : params;
+  const resolvedType = typeof params === 'string' ? params : (params.type || params.jobType || '');
+  const p = typeof params === 'string'
+    ? { type: params, dedupeKey: dedupeKeyArg || '', payload: payloadArg || {} }
+    : { ...params, type: resolvedType };
+
   const admin = getAdminDbClient();
 
   // Check if job with (type, dedupe_key) already exists
@@ -73,86 +75,90 @@ export async function enqueueOutboxJob(params: EnqueueJobParams | string, dedupe
       order_id: p.orderId || null,
       offering_id: p.offeringId || null,
       property_id: p.propertyId || null,
-      max_attempts: p.maxAttempts || 5,
       status: 'pending',
       attempts: 0,
+      max_attempts: p.maxAttempts || 5,
+      next_run_at: new Date().toISOString(),
     })
     .select('id')
     .single();
 
-  if (error) {
-    // Handle concurrent race on unique constraint gracefully
-    if (error.code === '23505') {
-      const { data: raced } = await admin
-        .from('outbox_jobs')
-        .select('id')
-        .eq('type', p.type)
-        .eq('dedupe_key', p.dedupeKey)
-        .single();
-      return { id: raced?.id || '', isDuplicate: true };
+  if (error || !data) {
+    // In case of race condition on unique (type, dedupe_key)
+    const { data: fallback } = await admin
+      .from('outbox_jobs')
+      .select('id')
+      .eq('type', p.type)
+      .eq('dedupe_key', p.dedupeKey)
+      .maybeSingle();
+
+    if (fallback) {
+      return { id: fallback.id, isDuplicate: true };
     }
-    throw new Error(`[OUTBOX_ENQUEUE_ERROR] Failed to enqueue job: ${error.message}`);
+    throw new Error(`Failed to enqueue outbox job: ${error?.message}`);
   }
 
   return { id: data.id, isDuplicate: false };
 }
 
 /**
- * Claims a batch of pending jobs using Postgres FOR UPDATE SKIP LOCKED.
- * Guarantees zero duplicate claims across concurrent workers.
+ * Claims up to `batchSize` pending jobs using PostgreSQL row-level locks
+ * via `SELECT ... FOR UPDATE SKIP LOCKED`.
  */
-export async function claimOutboxJobs(
-  batchSize: number = 5,
-  workerId: string = `worker-${Date.now()}`
-): Promise<OutboxJob[]> {
-  const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!dbUrl) {
-    throw new Error('[OUTBOX_ERROR] Direct database connection string required for row locking.');
+export async function claimOutboxJobs(batchSize: number = 5, workerId: string = 'worker-default'): Promise<OutboxJob[]> {
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!connectionString) {
+    throw new Error('[OUTBOX_ERROR] Direct database connection string is required for SKIP LOCKED row locking.');
   }
 
-  const client = new pg.Client({ connectionString: dbUrl });
+  const client = new pg.Client({ connectionString });
   await client.connect();
 
   try {
     await client.query('BEGIN');
 
-    // Select and lock runnable jobs atomically
-    const selectSql = `
+    const selectQuery = `
       SELECT id, type, dedupe_key, order_id, offering_id, property_id, payload,
              status, attempts, max_attempts, next_run_at, locked_by, locked_at,
              last_error, created_at, updated_at
-        FROM outbox_jobs
-       WHERE status = 'pending'
-         AND next_run_at <= now()
-       ORDER BY created_at ASC
-       LIMIT $1
-         FOR UPDATE SKIP LOCKED
+      FROM outbox_jobs
+      WHERE status IN ('pending', 'failed')
+        AND next_run_at <= NOW()
+        AND attempts < max_attempts
+      ORDER BY next_run_at ASC
+      LIMIT $1
+      FOR UPDATE SKIP LOCKED;
     `;
-    const res = await client.query(selectSql, [batchSize]);
-    const claimedJobs: OutboxJob[] = res.rows;
 
-    if (claimedJobs.length > 0) {
-      const jobIds = claimedJobs.map((j) => j.id);
-      const updateSql = `
-        UPDATE outbox_jobs
-           SET status = 'running',
-               locked_by = $1,
-               locked_at = now(),
-               attempts = attempts + 1,
-               updated_at = now()
-         WHERE id = ANY($2::uuid[])
-      `;
-      await client.query(updateSql, [workerId, jobIds]);
+    const { rows } = await client.query<OutboxJob>(selectQuery, [batchSize]);
+
+    if (rows.length === 0) {
+      await client.query('COMMIT');
+      return [];
     }
 
+    const jobIds = rows.map((r) => r.id);
+    const nowIso = new Date().toISOString();
+
+    const updateQuery = `
+      UPDATE outbox_jobs
+      SET status = 'running',
+          attempts = attempts + 1,
+          locked_by = $1,
+          locked_at = $2,
+          updated_at = $2
+      WHERE id = ANY($3::uuid[]);
+    `;
+
+    await client.query(updateQuery, [workerId, nowIso, jobIds]);
     await client.query('COMMIT');
 
-    // Update in-memory models to reflect new attempt
-    return claimedJobs.map((j) => ({
-      ...j,
+    return rows.map((r) => ({
+      ...r,
       status: 'running',
+      attempts: r.attempts + 1,
       locked_by: workerId,
-      attempts: j.attempts + 1,
+      locked_at: nowIso,
     }));
   } catch (err) {
     await client.query('ROLLBACK');
@@ -163,63 +169,45 @@ export async function claimOutboxJobs(
 }
 
 /**
- * Marks an outbox job as successfully completed.
+ * Marks a job as completed successfully ('done').
  */
 export async function completeOutboxJob(jobId: string): Promise<void> {
   const admin = getAdminDbClient();
-  const { error } = await admin
+  const now = new Date().toISOString();
+
+  await admin
     .from('outbox_jobs')
     .update({
       status: 'done',
       locked_by: null,
       locked_at: null,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq('id', jobId);
-
-  if (error) {
-    throw new Error(`[OUTBOX_COMPLETE_ERROR] Failed to mark job complete: ${error.message}`);
-  }
 }
 
 /**
- * Handles a failed outbox job with exponential backoff or dead-lettering.
+ * Records a job failure with exponential backoff.
+ * Transitions to 'dead' if max_attempts is exceeded.
  */
-export async function failOutboxJob(
-  jobId: string,
-  errorMessage: string,
-  currentAttempts: number,
-  maxAttempts: number = 5
-): Promise<void> {
+export async function failOutboxJob(jobId: string, errorMsg: string, currentAttempts: number, maxAttempts: number): Promise<void> {
   const admin = getAdminDbClient();
+  const now = new Date();
   const isDead = currentAttempts >= maxAttempts;
 
-  if (isDead) {
-    await admin
-      .from('outbox_jobs')
-      .update({
-        status: 'dead',
-        last_error: errorMessage,
-        locked_by: null,
-        locked_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', jobId);
-  } else {
-    // Exponential backoff: 10s, 20s, 40s, 80s, max 300s
-    const backoffSeconds = Math.min(300, Math.pow(2, currentAttempts) * 10);
-    const nextRun = new Date(Date.now() + backoffSeconds * 1000).toISOString();
+  // Exponential backoff: 2s, 4s, 8s, 16s... up to 5 minutes
+  const backoffSeconds = Math.min(300, Math.pow(2, currentAttempts));
+  const nextRunAt = new Date(now.getTime() + backoffSeconds * 1000).toISOString();
 
-    await admin
-      .from('outbox_jobs')
-      .update({
-        status: 'pending',
-        next_run_at: nextRun,
-        last_error: errorMessage,
-        locked_by: null,
-        locked_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', jobId);
-  }
+  await admin
+    .from('outbox_jobs')
+    .update({
+      status: isDead ? 'dead' : 'failed',
+      last_error: errorMsg,
+      next_run_at: isDead ? now.toISOString() : nextRunAt,
+      locked_by: null,
+      locked_at: null,
+      updated_at: now.toISOString(),
+    })
+    .eq('id', jobId);
 }

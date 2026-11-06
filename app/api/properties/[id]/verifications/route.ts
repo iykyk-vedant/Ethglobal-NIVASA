@@ -89,6 +89,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Separation of Duties (ARCH §10.5, §12.4): submitter or uploader cannot approve manifest
+    if (manifest.created_by === auth.userId) {
+      return NextResponse.json(
+        {
+          error: 'SOD_VIOLATION',
+          message: 'Separation of duties violation: The submitter or evidence uploader cannot approve their own manifest version.',
+        },
+        { status: 403 }
+      );
+    }
+
     // Invariant: An already approved manifest is immutable and cannot be re-verified or mutated
     if (manifest.status === 'approved') {
       return NextResponse.json(
@@ -104,12 +115,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     // 5. Update Manifest Status
     if (decision === 'verified') {
-      // Supersede any previously approved manifests for this property
+      // Supersede any previously approved or superseded-pending manifests for this property
       await adminDb
         .from('evidence_manifests')
         .update({ status: 'superseded', updated_at: now })
         .eq('property_id', propertyId)
-        .eq('status', 'approved');
+        .in('status', ['approved', 'superseded-pending']);
 
       // Approve this exact manifest version
       await adminDb

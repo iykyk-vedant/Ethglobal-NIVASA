@@ -139,6 +139,13 @@ export const MANIFEST_STATE_MAP: Record<ManifestStatus, StatePresentation> = {
     badgeClass: 'bg-surface-muted text-text-secondary border-border',
     variant: 'pending',
   },
+  'superseded-pending': {
+    label: 'Superseded (Pending Review)',
+    icon: RotateCcw,
+    description: 'Evidence drift detected; manifest awaiting verification of successor version.',
+    badgeClass: 'bg-status-warning/10 text-status-warning border-status-warning/30',
+    variant: 'warning',
+  },
 };
 
 // -----------------------------------------------------------------------------
