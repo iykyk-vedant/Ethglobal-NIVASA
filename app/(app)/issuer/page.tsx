@@ -1,15 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
 import { getAdminDbClient } from '@/lib/db/admin';
+import { getCurrentUser } from '@/lib/auth/server-session';
 import { Badge } from '@/components/ui/Badge';
 
 export default async function IssuerDashboardPage() {
+  const user = await getCurrentUser();
+  if (!user) return null; // The issuer layout redirects unauthenticated visitors.
   const adminDb = getAdminDbClient();
 
-  const { data: properties } = await adminDb
+  let propertiesQuery = adminDb
     .from('properties')
     .select('*, evidence_manifests(version, checklist_completeness, status)')
     .order('created_at', { ascending: false });
+  if (!user.roles.includes('admin')) propertiesQuery = propertiesQuery.eq('issuer_id', user.userId);
+  const { data: properties } = await propertiesQuery;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">

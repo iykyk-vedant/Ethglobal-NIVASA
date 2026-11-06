@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ArrowRight } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Building2 } from 'lucide-react';
 
 export function PublicHeader() {
   return (
@@ -30,6 +30,15 @@ export function PublicHeader() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/sign-in?next=%2Fissuer"
+            className="inline-flex items-center gap-1 px-2 sm:gap-1.5 sm:px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-surface-muted rounded transition-colors"
+          >
+            <Building2 className="w-4 h-4" aria-hidden="true" />
+            <span className="sm:hidden">Issuer</span>
+            <span className="hidden sm:inline">Issuer workspace</span>
+          </Link>
+
           <Link
             href="/verify/offering/33333333-3333-3333-3333-333333333333"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-surface-muted rounded transition-colors"

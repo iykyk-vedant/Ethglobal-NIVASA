@@ -43,6 +43,8 @@ More detail: [architecture](docs/architecture.md), [threat model](docs/threat-mo
 - **Investor:** binds a wallet, requests eligibility and places a simulated order; cannot read another investor’s private records.
 - **Admin:** manages trusted roles and demo controls; mutations are authorized and audited.
 
+The public header now links to the issuer workspace. Issuer, verifier, investor and admin access requires an operator-provisioned Supabase account; the application derives roles from that account and does not treat the navigation selector as authentication. The issuer workspace can create a property draft, upload evidence, and submit a manifest for independent review. New offering proposals currently require the authenticated `/api/offerings` endpoint after a property has an approved manifest; an issuer-facing proposal form is not included.
+
 The eight-beat demo is documented in [docs/demo-script.md](docs/demo-script.md). Complete a real run before recording and use only transaction/request links copied from actual records.
 
 ### Differentiators

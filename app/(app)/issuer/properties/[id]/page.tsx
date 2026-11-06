@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAdminDbClient } from '@/lib/db/admin';
+import { getCurrentUser } from '@/lib/auth/server-session';
 import { calculateChecklistCompleteness } from '@/lib/evidence/checklist';
 import { IssuerPropertyWorkspace } from '@/components/evidence/IssuerPropertyWorkspace';
 import { Badge } from '@/components/ui/Badge';
@@ -12,14 +13,17 @@ interface Props {
 
 export default async function IssuerPropertyDetailPage({ params }: Props) {
   const { id } = await params;
+  const user = await getCurrentUser();
+  if (!user) notFound(); // The issuer layout redirects unauthenticated visitors.
   const adminDb = getAdminDbClient();
 
   // 1. Fetch Property
-  const { data: property, error: propErr } = await adminDb
+  let propertyQuery = adminDb
     .from('properties')
     .select('*')
-    .eq('id', id)
-    .single();
+    .eq('id', id);
+  if (!user.roles.includes('admin')) propertyQuery = propertyQuery.eq('issuer_id', user.userId);
+  const { data: property, error: propErr } = await propertyQuery.single();
 
   if (propErr || !property) {
     notFound();

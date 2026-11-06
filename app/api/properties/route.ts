@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/session';
+import { requireAuth, requireRole } from '@/lib/auth/session';
 import { getAdminDbClient, appendAuditLog } from '@/lib/db/admin';
 import { z } from 'zod';
 
@@ -16,7 +16,7 @@ const createPropertySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAuth(req);
+    const auth = await requireRole(req, ['issuer', 'admin']);
     const body = await req.json();
 
     const parseResult = createPropertySchema.safeParse(body);
