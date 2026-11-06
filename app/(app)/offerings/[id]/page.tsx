@@ -195,7 +195,7 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
                 Gross Yield = Annual Rent ({formatINR(annualRentInr)}) ÷ Valuation ({formatINR(totalValuationInr)}) = 7.20%
               </div>
               <p className="text-[11px] text-[var(--text-secondary)] italic">
-                *Gross only, not net yield, and does not represent a financial forecast or guaranteed return.
+                *Gross only, not net yield, and does not represent a financial forecast or assurance of return.
               </p>
             </div>
           </div>

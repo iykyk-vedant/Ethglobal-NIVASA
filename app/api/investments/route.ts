@@ -26,7 +26,7 @@ import {
   buildInvestmentAcknowledgementMessage,
   CANONICAL_SIMULATED_DEMO_STATEMENT,
 } from '@/lib/wallet/investment-acknowledgement';
-import { multiplyMoney, toUnitsString } from '@/lib/money/decimal';
+import { multiplyMoney, toMoneyString, toUnitsString } from '@/lib/money/decimal';
 
 const acknowledgementSchema = z.object({
   offeringId: z.string().uuid('Invalid offering ID'),
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Validate exact acknowledgement terms against database values
     const ack = validated.acknowledgement;
-    const dbUnitPriceStr = Number(offering.unit_price_inr).toFixed(2);
+    const dbUnitPriceStr = toMoneyString(String(offering.unit_price_inr));
     const expectedTotalInr = multiplyMoney(dbUnitPriceStr, unitsStr);
 
     if (ack.offeringId !== offering.id) {
@@ -151,10 +151,10 @@ export async function POST(req: NextRequest) {
     if (ack.units !== unitsStr) {
       throw new AppError(ErrorCodes.VALIDATION_FAILED, 'Acknowledgement units mismatch.', 400);
     }
-    if (Number(ack.unitPriceInr).toFixed(2) !== dbUnitPriceStr) {
+    if (toMoneyString(ack.unitPriceInr) !== dbUnitPriceStr) {
       throw new AppError(ErrorCodes.VALIDATION_FAILED, 'Acknowledgement unit price mismatch.', 400);
     }
-    if (Number(ack.totalAmountInr).toFixed(2) !== Number(expectedTotalInr).toFixed(2)) {
+    if (toMoneyString(ack.totalAmountInr) !== toMoneyString(expectedTotalInr)) {
       throw new AppError(ErrorCodes.VALIDATION_FAILED, 'Acknowledgement total amount calculation mismatch.', 400);
     }
     if (ack.walletAddress.toLowerCase() !== profile.wallet_address.toLowerCase()) {

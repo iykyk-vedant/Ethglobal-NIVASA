@@ -545,7 +545,7 @@ export default function HomePage() {
                 <li className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-status-warning mt-1.5 shrink-0" />
                   <span>
-                    <strong className="text-text-primary">No Investment Advice or Return Guarantee:</strong> Fictional commercial asset with simulated valuations. No guaranteed yield or capital protection.
+                    <strong className="text-text-primary">No Investment Advice or Return Guarantee:</strong> Fictional commercial asset with simulated valuations. No assurance of yield or capital protection.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">

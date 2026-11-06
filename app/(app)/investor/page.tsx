@@ -539,7 +539,7 @@ export default async function InvestorDashboardPage() {
             </div>
 
             <p className="text-[11px] text-text-secondary italic">
-              *Gross yield is derived strictly as Rent ÷ Valuation (7.20%). Gross only, not net yield, and does not represent a financial forecast or guaranteed return.
+              *Gross yield is derived strictly as Rent ÷ Valuation (7.20%). Gross only, not net yield, and does not represent a financial forecast or assurance of return.
             </p>
           </div>
         </div>
