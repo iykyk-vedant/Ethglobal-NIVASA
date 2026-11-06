@@ -283,3 +283,4 @@ export async function listActiveFaults(): Promise<ArmedFault[]> {
 
   return (faults as ArmedFault[]) || [];
 }
+

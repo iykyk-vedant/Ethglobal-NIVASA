@@ -46,3 +46,4 @@ for (const page of pages) {
 }
 
 console.log('All Milestone M12 responsive screenshots captured successfully.');
+

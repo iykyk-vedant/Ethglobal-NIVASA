@@ -111,7 +111,6 @@ export default function AdminOrderDetailPage({ params }: OrderPageProps) {
       const res = await fetch('/api/cron/worker', {
         method: 'POST',
         headers: {
-          'x-cron-secret': process.env.NEXT_PUBLIC_CRON_SECRET || 'test-cron-secret-nivasa-secure-m4',
           'x-demo-user-id': DEMO_ADMIN_ID,
         },
       });

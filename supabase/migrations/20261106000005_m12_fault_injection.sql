@@ -39,3 +39,4 @@ CREATE POLICY "admin_view_demo_faults" ON demo_fault_injections
         AND user_roles.role = 'admin'
     )
   );
+
