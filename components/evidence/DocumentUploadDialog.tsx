@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ChecklistConfigItem } from '@/lib/evidence/checklist';
 
@@ -32,6 +32,23 @@ export function DocumentUploadDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [serverHash, setServerHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // This dialog remains mounted between opens. Reset all fields whenever a
+  // new checklist category is opened so a prior file, date or source cannot
+  // silently be reused for another evidence item.
+  useEffect(() => {
+    if (!isOpen) return;
+    setDocType(preselectedCode || checklistItems[0]?.code || 'property_card');
+    setSourceName('');
+    setSourceRef('');
+    setIssuedAt('');
+    setValidUntil('');
+    setLimitationNote('');
+    setFile(null);
+    setIsSyntheticConfirmed(false);
+    setServerHash(null);
+    setErrorMsg(null);
+  }, [isOpen, preselectedCode, checklistItems]);
 
   if (!isOpen) return null;
 

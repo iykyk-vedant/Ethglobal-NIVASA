@@ -100,7 +100,10 @@ export function EvidenceChecklistTable({
               <th className="py-3 px-4">Points</th>
               <th className="py-3 px-4">Status</th>
               <th className="py-3 px-4">Issuing Authority / Ref</th>
-              <th className="py-3 px-4">Server SHA-256 Hash</th>
+              <th className="py-3 px-4">
+                Server SHA-256 Hash
+                <span className="block text-[10px] font-normal">Identical file bytes produce the same hash.</span>
+              </th>
               <th className="py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -109,6 +112,21 @@ export function EvidenceChecklistTable({
               const doc = docsMap.get(item.code.toLowerCase());
               const isPresent = Boolean(doc);
               const isExpanded = doc ? expandedHashes[doc.id] : false;
+              const hasMatchingContent = Boolean(doc && documents.some(
+                (other) => other.id !== doc.id && other.sha256_hash.toLowerCase() === doc.sha256_hash.toLowerCase()
+              ));
+              const expiredByDate = Boolean(doc?.valid_until && new Date(doc.valid_until).getTime() < Date.now());
+              const staleByAge = Boolean(
+                item.status === 'expired' && !expiredByDate && item.max_age_days !== null &&
+                item.daysOld !== undefined && item.daysOld > item.max_age_days
+              );
+              const expiryReason = item.status === 'expired' && doc
+                ? expiredByDate && doc.valid_until
+                  ? `Validity ended ${new Date(doc.valid_until).toLocaleDateString()}`
+                  : item.max_age_days !== null && item.daysOld !== undefined
+                    ? `Internal freshness rule: issued ${item.daysOld} days ago; refresh interval ${item.max_age_days} days. This is not a legal validity decision.`
+                    : 'Outside its configured validity period'
+                : null;
 
               return (
                 <tr key={item.code} className="hover:bg-[var(--surface-muted)] transition-colors">
@@ -132,7 +150,12 @@ export function EvidenceChecklistTable({
                     {item.status === 'verified' ? (
                       <Badge variant="success">Active</Badge>
                     ) : item.status === 'expired' ? (
-                      <Badge variant="danger">Expired</Badge>
+                      <div className="space-y-1">
+                        <Badge variant={staleByAge ? 'warning' : 'danger'}>
+                          {staleByAge ? 'Needs refresh' : 'Expired'}
+                        </Badge>
+                        {expiryReason && <span className="block max-w-40 text-[10px] text-[var(--status-danger)]">{expiryReason}</span>}
+                      </div>
                     ) : (
                       <Badge variant="neutral">Missing</Badge>
                     )}
@@ -163,6 +186,11 @@ export function EvidenceChecklistTable({
                             ? doc.sha256_hash
                             : `${doc.sha256_hash.slice(0, 10)}...${doc.sha256_hash.slice(-6)}`}
                         </span>
+                        {hasMatchingContent && (
+                          <span className="mt-1 block text-[10px] text-[var(--text-secondary)]">
+                            Same content hash as another checklist upload
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <span className="text-[var(--text-secondary)]">—</span>
