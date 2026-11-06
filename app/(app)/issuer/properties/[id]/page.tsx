@@ -30,12 +30,16 @@ export default async function IssuerPropertyDetailPage({ params }: Props) {
   }
 
   // 2. Fetch Active Documents
-  const { data: documents } = await adminDb
+  const { data: documents, error: documentsErr } = await adminDb
     .from('property_documents')
     .select('*')
     .eq('property_id', id)
-    .eq('is_active', true)
+    .eq('status', 'active')
     .order('created_at', { ascending: false });
+
+  if (documentsErr) {
+    throw new Error(`Failed to load evidence documents: ${documentsErr.message}`);
+  }
 
   const activeDocs = documents || [];
 
@@ -53,7 +57,7 @@ export default async function IssuerPropertyDetailPage({ params }: Props) {
     activeDocs.map((d) => ({
       id: d.id,
       document_type: d.document_type,
-      status: d.is_active ? 'active' : 'superseded',
+      status: d.status,
       issued_at: d.issued_at,
       valid_until: d.valid_until,
       received_at: d.received_at,
