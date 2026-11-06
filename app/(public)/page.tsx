@@ -21,6 +21,9 @@ import {
   Layers,
 } from "lucide-react";
 import { formatINR, formatUnits, formatArea } from "@/lib/ui/format";
+import { runOfferingVerificationChecks } from "@/lib/verify/checks";
+
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: "NIVASA — Verifiable Asset Lifecycle Infrastructure Prototype",
@@ -28,9 +31,12 @@ export const metadata = {
     "End-to-end verifiable asset tokenization on Hedera Testnet and 0G Private Computer. Simulated demo for ETHGlobal Mumbai.",
 };
 
-export default function HomePage() {
+export default async function HomePage() {
   const demoOfferingId = "33333333-3333-3333-3333-333333333333";
   const demoPropertyId = "11111111-1111-1111-1111-111111111111";
+
+  // Real live checks from verification engine (ARCH §13.1, PLAN M11.6)
+  const liveReport = await runOfferingVerificationChecks(demoOfferingId).catch(() => null);
 
   // Real seeded asset facts from Milestone M1 & M2 (Never hard-coded fake figures)
   const assetFacts = {
@@ -137,38 +143,65 @@ export default function HomePage() {
     },
   ];
 
-  const verifyChecks = [
-    {
-      code: "C1",
-      label: "Evidence Manifest Integrity",
-      status: "PASS",
-      detail: "All 9 Maharashtra checklist documents hashed (SHA-256); Merkle root matches approved manifest.",
-    },
-    {
-      code: "C2",
-      label: "ATS Diamond Token Anchor",
-      status: "PASS",
-      detail: "Contract deployed at 0.0.11330244 on Hedera Testnet; max supply 10,000 units verified.",
-    },
-    {
-      code: "C3",
-      label: "Separation of Duties",
-      status: "PASS",
-      detail: "Issuer and verifier roles cryptographically isolated; reviewer ID distinct from property submitter.",
-    },
-    {
-      code: "C4",
-      label: "Dual-Lock Status",
-      status: "PASS",
-      detail: "Contract pause facet unpaused; database status ACTIVE; no active drift events.",
-    },
-    {
-      code: "C5",
-      label: "0G Confidential Proof",
-      status: "PASS",
-      detail: "Private AI episode verified with valid 0G enclave execution reference.",
-    },
-  ];
+  const verifyChecks = liveReport?.checks
+    ? liveReport.checks.map((c) => ({
+        code: c.id,
+        label: c.title,
+        status: c.status,
+        detail: c.description,
+        observed: c.observed,
+      }))
+    : [
+        {
+          code: "C1",
+          label: "Rights Document Hash",
+          status: "UNAVAILABLE",
+          detail: "Recomputed SHA-256 of synthetic rights terms versus on-chain document.",
+          observed: "Live check running",
+        },
+        {
+          code: "C2",
+          label: "Evidence Manifest Merkle Root",
+          status: "UNAVAILABLE",
+          detail: "Recomputed Merkle root from hashes-only manifest versus on-chain entry.",
+          observed: "Live check running",
+        },
+        {
+          code: "C3",
+          label: "Manifest Review & Role Separation",
+          status: "UNAVAILABLE",
+          detail: "Verifier approval distinct from property issuer.",
+          observed: "Live check running",
+        },
+        {
+          code: "C4",
+          label: "ATS Asset State Synchronization",
+          status: "UNAVAILABLE",
+          detail: "Database offering status matches on-chain pause state.",
+          observed: "Live check running",
+        },
+        {
+          code: "C5",
+          label: "Token Supply & Cap Reconciliation",
+          status: "UNAVAILABLE",
+          detail: "On-chain supply matches completed orders and respects maximum cap.",
+          observed: "Live check running",
+        },
+        {
+          code: "C6",
+          label: "Transfer Restriction & KYC Enforcement",
+          status: "UNAVAILABLE",
+          detail: "Mirror Node confirms ineligible transfer blocked and eligible transfer cleared.",
+          observed: "Live check running",
+        },
+        {
+          code: "C7",
+          label: "Tamper-Evident Audit Hash Chain",
+          status: "UNAVAILABLE",
+          detail: "End-to-end unbroken hash chain over immutable audit log rows.",
+          observed: "Live check running",
+        },
+      ];
 
   return (
     <div className="flex-1 flex flex-col">
@@ -438,36 +471,57 @@ export default function HomePage() {
               <span className="text-text-primary font-semibold">
                 Offering ID: {demoOfferingId}
               </span>
-              <span className="text-text-secondary">
-                Verified against Hedera Testnet Diamond Contract {assetFacts.contractId}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-text-secondary">
+                  ATS Contract: {assetFacts.contractId}
+                </span>
+                {liveReport?.summary && (
+                  <span
+                    data-testid="live-aggregate-badge"
+                    className="px-2 py-0.5 rounded bg-surface-card border border-border text-[11px] font-bold text-brand-primary"
+                  >
+                    {liveReport.summary.summaryText}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="divide-y divide-border">
-              {verifyChecks.map((chk) => (
-                <div key={chk.code} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded">
-                        {chk.code}
-                      </span>
-                      <h4 className="text-sm font-semibold text-text-primary">
-                        {chk.label}
-                      </h4>
-                    </div>
-                    <p className="text-xs text-text-secondary pl-7 sm:pl-8">
-                      {chk.detail}
-                    </p>
-                  </div>
+              {verifyChecks.map((chk) => {
+                const isPass = chk.status === 'PASS';
+                const isFail = chk.status === 'FAIL';
+                const statusBadgeClass = isPass
+                  ? 'bg-status-success/10 border-status-success/20 text-status-success'
+                  : isFail
+                  ? 'bg-status-error/10 border-status-error/20 text-status-error'
+                  : 'bg-status-warning/10 border-status-warning/20 text-status-warning';
+                const StatusIcon = isPass ? CheckCircle2 : isFail ? XCircle : AlertTriangle;
 
-                  <div className="pl-7 sm:pl-0 flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono font-medium bg-status-success/10 border border-status-success/20 text-status-success">
-                      <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>{chk.status}</span>
-                    </span>
+                return (
+                  <div key={chk.code} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded">
+                          {chk.code}
+                        </span>
+                        <h4 className="text-sm font-semibold text-text-primary">
+                          {chk.label}
+                        </h4>
+                      </div>
+                      <p className="text-xs text-text-secondary pl-7 sm:pl-8">
+                        {chk.detail}
+                      </p>
+                    </div>
+
+                    <div className="pl-7 sm:pl-0 flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono font-medium border ${statusBadgeClass}`}>
+                        <StatusIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>{chk.status}</span>
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
