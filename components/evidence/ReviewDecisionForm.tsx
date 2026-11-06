@@ -163,12 +163,19 @@ export function ReviewDecisionForm({
             Required Justification Reason *
           </label>
           <textarea
+            id="review-reason"
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Explain the legal/documentary basis for this verification decision (minimum 10 characters)..."
+            aria-describedby="review-reason-guidance"
             className="w-full p-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-page)] text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--focus)]"
           />
+          <p id="review-reason-guidance" className="mt-1 text-[11px] text-[var(--text-secondary)]" aria-live="polite">
+            {reason.trim().length < 10
+              ? `Add at least ${10 - reason.trim().length} more character${10 - reason.trim().length === 1 ? '' : 's'} to enable submission.`
+              : `${reason.trim().length} characters entered. Your justification is ready.`}
+          </p>
         </div>
 
         <div>
