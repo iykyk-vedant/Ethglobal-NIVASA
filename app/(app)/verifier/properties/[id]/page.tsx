@@ -13,6 +13,15 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+function getVerificationSummaryText(summary: unknown): string | null {
+  if (typeof summary === 'string') return summary;
+  if (summary && typeof summary === 'object' && 'reason' in summary) {
+    const reason = (summary as { reason?: unknown }).reason;
+    return typeof reason === 'string' ? reason : null;
+  }
+  return null;
+}
+
 export default async function VerifierPropertyReviewPage({ params }: Props) {
   const { id } = await params;
   const adminDb = getAdminDbClient();
@@ -70,7 +79,7 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
     .from('property_verifications')
     .select('*')
     .eq('property_id', id)
-    .order('created_at', { ascending: false });
+    .order('decided_at', { ascending: false });
 
   if (verificationsErr) throw new Error(`Failed to load verification history: ${verificationsErr.message}`);
 
@@ -249,11 +258,11 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
                     </span>
                   </div>
                   <span className="text-[var(--text-secondary)] font-mono">
-                    {new Date(v.created_at).toLocaleString()}
+                    {new Date(v.decided_at).toLocaleString()}
                   </span>
                 </div>
                 <div className="text-[var(--text-secondary)] pl-2 border-l-2 border-[var(--border)]">
-                  {v.evidence_summary || v.limitations || 'Review completed against Maharashtra checklist.'}
+                  {getVerificationSummaryText(v.evidence_summary) || v.limitations || 'Review completed against Maharashtra checklist.'}
                 </div>
               </div>
             ))}
