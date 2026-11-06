@@ -61,7 +61,7 @@ export const MANIFEST_TRANSITIONS: Record<ManifestStatus, readonly ManifestStatu
   approved: ["superseded", "superseded-pending"],
   "superseded-pending": ["superseded", "approved"],
   rejected: [],
-  superseded: ["approved"],
+  superseded: [],
 };
 
 // ---------------------------------------------------------------------------

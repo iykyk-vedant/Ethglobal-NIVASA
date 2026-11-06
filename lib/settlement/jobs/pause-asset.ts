@@ -36,13 +36,13 @@ export async function processPauseAsset(payload: PauseAssetPayload) {
   // Clear in-memory chain-read cache to guarantee fresh read-back
   clearChainReadCache(`paused:`);
 
-  // 2. Read isPaused back from chain with brief retry for Mirror Node indexing
+  // 2. Read isPaused back from chain with retry for Mirror Node block ingestion
   let isPaused = false;
   for (let attempt = 0; attempt < 5; attempt++) {
     clearChainReadCache(`paused:`);
     isPaused = await adapter.isPaused(assetTarget);
     if (isPaused) break;
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1200));
   }
   if (!isPaused) {
     throw new Error('Asset pause verification failed: isPaused returned false after pause transaction.');
