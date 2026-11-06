@@ -134,5 +134,14 @@ export function formatINR(val: string | Decimal, includeSymbol: boolean = true):
   return `${prefix}${symbol}${formattedInt}.${decPart}`;
 }
 
+export function toUnitsString(val: string | bigint | number): string {
+  const str = val.toString().trim();
+  if (!/^\d+$/.test(str)) {
+    throw new Error(`[DECIMAL_SECURITY_ERROR] Invalid integer units: "${val}"`);
+  }
+  return str;
+}
+
+export const multiplyMoney = mulMoney;
 export { Decimal };
 
