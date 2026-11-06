@@ -14,12 +14,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'INVALID_SESSION', message: 'A valid sign-in session is required.' }, { status: 400 });
   }
 
-  const { data, error } = await getAdminDbClient().auth.getUser(parsed.data.accessToken);
+  const admin = getAdminDbClient();
+  const { data, error } = await admin.auth.getUser(parsed.data.accessToken);
   if (error || !data.user) {
     return NextResponse.json({ error: 'INVALID_SESSION', message: 'Sign-in failed or expired. Please try again.' }, { status: 401 });
   }
 
-  const response = NextResponse.json({ success: true });
+  const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }] = await Promise.all([
+    admin.from('profiles').select('id').eq('id', data.user.id).maybeSingle(),
+    admin.from('user_roles').select('role').eq('user_id', data.user.id).is('revoked_at', null),
+  ]);
+  if (profileError || rolesError) {
+    return NextResponse.json({ error: 'ACCOUNT_LOOKUP_FAILED', message: 'Could not verify this account with the NIVASA database. Please contact the operator.' }, { status: 503 });
+  }
+  if (!profile || !roleRows?.length) {
+    return NextResponse.json({ error: 'ACCOUNT_NOT_PROVISIONED', message: 'This Supabase account has no active NIVASA profile and role. Ask the operator to provision it.' }, { status: 403 });
+  }
+  const roles = roleRows.map((row) => row.role as string);
+
+  const response = NextResponse.json({ success: true, roles });
   response.cookies.set('sb-access-token', parsed.data.accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

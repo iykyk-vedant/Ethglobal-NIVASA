@@ -31,13 +31,34 @@ export default function SignInPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessToken: data.session.access_token, expiresIn: data.session.expires_in }),
       });
-      if (!sessionResponse.ok) throw new Error('Could not establish the secure application session. Please try again.');
+      const sessionData = await sessionResponse.json().catch(() => ({})) as { message?: string; roles?: string[] };
+      if (!sessionResponse.ok) {
+        throw new Error(sessionData.message || 'Could not establish the secure application session. Please try again.');
+      }
 
       const requestedNext = new URLSearchParams(window.location.search).get('next') || '/issuer';
       const resolvedNext = new URL(requestedNext, window.location.origin);
-      const next = resolvedNext.origin === window.location.origin
+      const roles = sessionData.roles || [];
+      const roleHome = roles.includes('admin')
+        ? '/admin/ops'
+        : roles.includes('verifier')
+          ? '/verifier'
+          : roles.includes('issuer')
+            ? '/issuer'
+            : '/investor';
+      const requestedRole = resolvedNext.pathname.startsWith('/admin')
+        ? 'admin'
+        : resolvedNext.pathname.startsWith('/verifier')
+          ? 'verifier'
+          : resolvedNext.pathname.startsWith('/issuer')
+            ? 'issuer'
+            : resolvedNext.pathname.startsWith('/investor')
+              ? 'investor'
+              : null;
+      const roleCanOpenRequestedPage = !requestedRole || roles.includes(requestedRole) || roles.includes('admin');
+      const next = resolvedNext.origin === window.location.origin && roleCanOpenRequestedPage
         ? `${resolvedNext.pathname}${resolvedNext.search}${resolvedNext.hash}`
-        : '/issuer';
+        : roleHome;
       window.location.assign(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed. Please try again.');
