@@ -26,8 +26,13 @@ export default function ErrorPage({
         Failed to load verifier review screen
       </h2>
       <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto">
-        {error.message || 'An error occurred while loading property details or manifest history.'}
+        The verifier review data could not be loaded. Check the Vercel function logs for this correlation ID.
       </p>
+      {error.digest && (
+        <p className="mx-auto inline-block rounded border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 font-mono text-xs text-[var(--text-secondary)]">
+          Correlation ID: <span className="font-semibold text-[var(--text-primary)]">{error.digest}</span>
+        </p>
+      )}
       <div className="pt-2">
         <Button onClick={() => reset()} size="sm">
           Try Again

@@ -29,23 +29,27 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
   }
 
   // 2. Fetch Manifests
-  const { data: manifests } = await adminDb
+  const { data: manifests, error: manifestsErr } = await adminDb
     .from('evidence_manifests')
     .select('*')
     .eq('property_id', id)
     .order('version', { ascending: false });
+
+  if (manifestsErr) throw new Error(`Failed to load evidence manifests: ${manifestsErr.message}`);
 
   const manifestList = manifests || [];
   const latestManifest = manifestList.length > 0 ? manifestList[0] : null;
   const previousManifest = manifestList.length > 1 ? manifestList[1] : null;
 
   // 3. Fetch Active Documents
-  const { data: documents } = await adminDb
+  const { data: documents, error: documentsErr } = await adminDb
     .from('property_documents')
     .select('*')
     .eq('property_id', id)
-    .eq('is_active', true)
+    .eq('status', 'active')
     .order('created_at', { ascending: false });
+
+  if (documentsErr) throw new Error(`Failed to load evidence documents: ${documentsErr.message}`);
 
   const activeDocs = documents || [];
 
@@ -54,7 +58,7 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
     activeDocs.map((d) => ({
       id: d.id,
       document_type: d.document_type,
-      status: d.is_active ? 'active' : 'superseded',
+      status: d.status,
       issued_at: d.issued_at,
       valid_until: d.valid_until,
       received_at: d.received_at,
@@ -62,11 +66,28 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
   );
 
   // 5. Fetch Verification History
-  const { data: verifications } = await adminDb
+  const { data: verificationRows, error: verificationsErr } = await adminDb
     .from('property_verifications')
-    .select('*, reviewer:profiles!reviewer_id(display_name)')
+    .select('*')
     .eq('property_id', id)
     .order('created_at', { ascending: false });
+
+  if (verificationsErr) throw new Error(`Failed to load verification history: ${verificationsErr.message}`);
+
+  const reviewerIds = Array.from(new Set((verificationRows || []).map((row) => row.reviewer_id).filter(Boolean)));
+  let reviewerNames = new Map<string, string>();
+  if (reviewerIds.length > 0) {
+    const { data: reviewers, error: reviewersErr } = await adminDb
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', reviewerIds);
+    if (reviewersErr) throw new Error(`Failed to load verifier names: ${reviewersErr.message}`);
+    reviewerNames = new Map((reviewers || []).map((reviewer) => [reviewer.id, reviewer.display_name]));
+  }
+  const verifications = (verificationRows || []).map((row) => ({
+    ...row,
+    reviewer: { display_name: reviewerNames.get(row.reviewer_id) || null },
+  }));
 
   // 6. Separation of Duties (SoD) Check
   // Default verifier persona: Anand Verma (Title Verifier)
@@ -81,7 +102,7 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
         version: latestManifest.version,
         merkle_root: latestManifest.merkle_root,
         manifest_hash: latestManifest.manifest_hash,
-        documents: latestManifest.manifest_json?.documents || [],
+        documents: Array.isArray(latestManifest.manifest_json?.documents) ? latestManifest.manifest_json.documents : [],
       }
     : null;
 
@@ -90,7 +111,7 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
         version: previousManifest.version,
         merkle_root: previousManifest.merkle_root,
         manifest_hash: previousManifest.manifest_hash,
-        documents: previousManifest.manifest_json?.documents || [],
+        documents: Array.isArray(previousManifest.manifest_json?.documents) ? previousManifest.manifest_json.documents : [],
       }
     : null;
 
