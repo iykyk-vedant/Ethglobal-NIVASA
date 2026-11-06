@@ -16,6 +16,7 @@ export const envSchema = z
     // App
     NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
     APP_ENV: z.enum(["demo", "development", "production", "test"]).default("demo"),
+    NODE_ENV: z.enum(["development", "production", "test"]).optional(),
     CRON_SECRET: z.string().optional(),
     DEMO_PAYMENTS: z.preprocess(parseBooleanFlag, z.boolean()).default(false),
     DEMO_FAULTS: z.preprocess(parseBooleanFlag, z.boolean()).default(false),
@@ -64,7 +65,7 @@ export const envSchema = z
   })
   .superRefine((data, ctx) => {
     // Non-negotiable safety guard: refuse to start in production with DEMO_* flags active
-    if (data.APP_ENV === "production") {
+    if (data.APP_ENV === "production" || data.NODE_ENV === "production") {
       const activeDemoFlags = [];
       if (data.DEMO_PAYMENTS) activeDemoFlags.push("DEMO_PAYMENTS");
       if (data.DEMO_FAULTS) activeDemoFlags.push("DEMO_FAULTS");
@@ -73,14 +74,18 @@ export const envSchema = z
       if (activeDemoFlags.length > 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `REFUSING TO START: APP_ENV is 'production' but DEMO flags are active: ${activeDemoFlags.join(", ")}. Demo flags are prohibited in production.`,
-          path: ["APP_ENV"],
+          message: `REFUSING TO START: production runtime has DEMO flags active: ${activeDemoFlags.join(", ")}. Demo flags are prohibited in production.`,
+          path: [data.APP_ENV === "production" ? "APP_ENV" : "NODE_ENV"],
         });
       }
     }
   });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;
+
+export function isProductionRuntime(rawEnv: Record<string, unknown> = process.env): boolean {
+  return rawEnv.APP_ENV === "production" || rawEnv.NODE_ENV === "production";
+}
 
 export function validateEnv(rawEnv: Record<string, unknown> = process.env): ValidatedEnv {
   const result = envSchema.safeParse(rawEnv);

@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { randomBytes } from 'node:crypto';
 import pg from 'pg';
 import fs from 'fs';
 import path from 'path';
@@ -38,7 +39,7 @@ process.env.DEMO_PAYMENTS = 'true';
 process.env.DEMO_FAULTS = 'true';
 process.env.APP_ENV = 'test';
 if (!process.env.CRON_SECRET) {
-  process.env.CRON_SECRET = 'test-cron-secret-nivasa-secure-m4';
+  process.env.CRON_SECRET = randomBytes(32).toString('hex');
 }
 
 import { POST as investmentHandler } from '../app/api/investments/route';

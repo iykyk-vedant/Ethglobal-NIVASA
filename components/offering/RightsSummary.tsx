@@ -113,7 +113,7 @@ export const RightsSummary: React.FC<RightsSummaryProps> = ({
           {grossYieldFormula}
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] italic">
-          *Gross yield calculation only (Rent ÷ Valuation). Does not account for property management expenses, taxes, or vacancy. Never constitutes a guaranteed return or financial forecast.
+          *Gross yield calculation only (Rent ÷ Valuation). Does not account for property management expenses, taxes, or vacancy. It is not a return forecast.
         </p>
       </div>
 

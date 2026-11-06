@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
+import { randomBytes } from 'node:crypto';
 import fs from 'fs';
 import path from 'path';
 import { ethers } from 'ethers';
@@ -22,6 +23,8 @@ for (const line of envContent.split('\n')) {
     if (!process.env[k]) process.env[k] = v;
   }
 }
+if (!process.env.CRON_SECRET) process.env.CRON_SECRET = randomBytes(32).toString('hex');
+const testCronSecret = process.env.CRON_SECRET as string;
 process.env.DEMO_PAYMENTS = 'true';
 
 import { mulMoney, formatINR, toMoneyString } from '../lib/money/decimal';
@@ -308,8 +311,8 @@ describe('Milestone M6: Investor, Offering & Settlement UI + Restriction Proof',
       const workerReq = new NextRequest('http://localhost:3000/api/cron/worker', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.CRON_SECRET || 'test-cron-secret-nivasa-secure-m4'}`,
-          'x-cron-secret': process.env.CRON_SECRET || 'test-cron-secret-nivasa-secure-m4',
+          Authorization: `Bearer ${testCronSecret}`,
+          'x-cron-secret': testCronSecret,
           'x-demo-user-id': ADMIN_ID,
         },
       });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateEnv } from "./env";
+import { isProductionRuntime, validateEnv } from "./env";
 
 describe("lib/env.ts - Environment Validator & Safety Guard", () => {
   it("successfully parses a valid demo environment", () => {
@@ -27,7 +27,7 @@ describe("lib/env.ts - Environment Validator & Safety Guard", () => {
     };
 
     expect(() => validateEnv(raw)).toThrowError(
-      /REFUSING TO START: APP_ENV is 'production' but DEMO flags are active: DEMO_PAYMENTS/
+      /REFUSING TO START: production runtime has DEMO flags active: DEMO_PAYMENTS/
     );
   });
 
@@ -42,6 +42,18 @@ describe("lib/env.ts - Environment Validator & Safety Guard", () => {
     expect(() => validateEnv(raw)).toThrowError(
       /DEMO_PAYMENTS, DEMO_FAULTS, DEMO_EVENTS/
     );
+  });
+
+  it("REFUSES TO START when NODE_ENV=production even if APP_ENV keeps its demo default", () => {
+    expect(() => validateEnv({ NODE_ENV: "production", DEMO_EVENTS: "true" })).toThrowError(
+      /production runtime has DEMO flags active: DEMO_EVENTS/
+    );
+  });
+
+  it("detects production from either environment signal", () => {
+    expect(isProductionRuntime({ APP_ENV: "production", NODE_ENV: "development" })).toBe(true);
+    expect(isProductionRuntime({ APP_ENV: "demo", NODE_ENV: "production" })).toBe(true);
+    expect(isProductionRuntime({ APP_ENV: "demo", NODE_ENV: "test" })).toBe(false);
   });
 
   it("allows production when all DEMO flags are false or omitted", () => {

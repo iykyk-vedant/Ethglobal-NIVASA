@@ -15,6 +15,7 @@
  */
 
 import { getAdminDbClient, appendAuditLog } from '@/lib/db/admin';
+import { isProductionRuntime } from '@/lib/env';
 import { enqueueOutboxJob } from '@/lib/settlement/outbox';
 import { AppError, ErrorCodes } from '@/lib/validation/errors';
 
@@ -44,12 +45,11 @@ export interface ArmFaultParams {
 
 /**
  * Checks whether fault injection is enabled in the current runtime environment.
- * Strictly requires DEMO_FAULTS=true and non-production APP_ENV.
+ * Strictly requires DEMO_FAULTS=true and a non-production runtime.
  */
 export function isFaultInjectionEnabled(): boolean {
   const isEnabled = process.env.DEMO_FAULTS === 'true';
-  const isProduction =
-    process.env.APP_ENV === 'production' || process.env.NODE_ENV === 'production';
+  const isProduction = isProductionRuntime();
   return isEnabled && !isProduction;
 }
 
@@ -60,7 +60,7 @@ export function assertFaultInjectionAllowed(): void {
   if (!isFaultInjectionEnabled()) {
     throw new AppError(
       ErrorCodes.FLAG_DISABLED,
-      'Fault injection is disabled in this environment (requires DEMO_FAULTS=true and non-production APP_ENV).',
+      'Fault injection is disabled in this environment (requires DEMO_FAULTS=true and non-production runtime).',
       403
     );
   }

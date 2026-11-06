@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/session';
+import { isProductionRuntime } from '@/lib/env';
 import { getAdminDbClient, appendAuditLog } from '@/lib/db/admin';
 import {
   AppError,
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Enforce environment flag guard
     const demoPaymentsEnabled = process.env.DEMO_PAYMENTS === 'true';
-    const isProduction = process.env.APP_ENV === 'production' || process.env.NODE_ENV === 'production';
+    const isProduction = isProductionRuntime();
 
     if (!demoPaymentsEnabled || isProduction) {
       throw new AppError(

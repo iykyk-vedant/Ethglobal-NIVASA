@@ -10,7 +10,8 @@
     "lint": "next lint",
     "lint:tokens": "node scripts/lint-tokens.mjs",
     "test": "vitest run --fileParallelism=false",
-    "adversarial": "node -e \"console.error('Adversarial suite not implemented yet'); process.exit(1)\"",
+    "adversarial": "node scripts/adversarial.mjs",
+    "security:secrets": "node scripts/scan-secrets.mjs",
     "env:check": "node scripts/env-check.mjs",
     "ats:gate": "tsx scripts/ats-gate.ts",
     "restriction:proof": "tsx scripts/restriction-proof.ts"

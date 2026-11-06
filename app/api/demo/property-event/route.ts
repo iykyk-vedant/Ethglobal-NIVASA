@@ -8,7 +8,7 @@
  *
  * Invariants:
  * - Admin role required
- * - Strictly disabled when APP_ENV=production or DEMO_EVENTS!=true (FLAG_DISABLED 403)
+ * - Strictly disabled in production or when DEMO_EVENTS!=true (FLAG_DISABLED 403)
  * - Property snapshot is append-only and explicitly marked provenance: 'simulated'
  * - Every operation logged to audit_logs
  */

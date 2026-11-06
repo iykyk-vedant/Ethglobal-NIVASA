@@ -25,17 +25,19 @@ import { processUnpauseAsset } from '@/lib/settlement/jobs/unpause-asset';
 import { processEvidenceDrift } from '@/lib/settlement/jobs/evidence-drift';
 import { processIntegrityCheck } from '@/lib/settlement/jobs/integrity-check';
 import { AppError, ErrorCodes } from '@/lib/validation/errors';
+import { isProductionRuntime } from '@/lib/env';
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Verify CRON_SECRET authentication
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
     const cronHeader = req.headers.get('x-cron-secret') || '';
-    const cronSecret = process.env.CRON_SECRET || 'test-cron-secret-nivasa-secure-m4';
+    const cronSecret = process.env.CRON_SECRET;
 
-    const bearerMatch = authHeader.startsWith('Bearer ') && authHeader.slice(7).trim() === cronSecret;
-    const headerMatch = cronHeader === cronSecret;
+    const bearerMatch = Boolean(cronSecret) && authHeader.startsWith('Bearer ') && authHeader.slice(7).trim() === cronSecret;
+    const headerMatch = Boolean(cronSecret) && cronHeader === cronSecret;
     const isDemoTrigger =
+      !isProductionRuntime() &&
       process.env.DEMO_PAYMENTS === 'true' &&
       Boolean(req.headers.get('x-demo-user-id'));
 

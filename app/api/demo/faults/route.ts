@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole, requireAuth } from '@/lib/auth/session';
+import { isProductionRuntime } from '@/lib/env';
 import {
   armFault,
   cancelArmedFault,
@@ -44,8 +45,7 @@ const cancelFaultSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     const isEnabled = isFaultInjectionEnabled();
-    const isProduction =
-      process.env.APP_ENV === 'production' || process.env.NODE_ENV === 'production';
+    const isProduction = isProductionRuntime();
 
     const activeFaults = isEnabled ? await listActiveFaults() : [];
 
@@ -65,8 +65,7 @@ export async function POST(req: NextRequest) {
     const auth = await requireRole(req, ['admin']);
 
     const isEnabled = isFaultInjectionEnabled();
-    const isProduction =
-      process.env.APP_ENV === 'production' || process.env.NODE_ENV === 'production';
+    const isProduction = isProductionRuntime();
 
     if (!isEnabled || isProduction) {
       throw new AppError(
