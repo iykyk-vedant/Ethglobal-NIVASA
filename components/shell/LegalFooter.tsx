@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ShieldCheck } from 'lucide-react';
 
 export function LegalFooter() {
@@ -9,9 +10,13 @@ export function LegalFooter() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="font-serif text-lg font-bold tracking-tight text-brand-primary">
-                NIVASA
-              </span>
+              <Image
+                src="/nivasa-wordmark.png"
+                alt="NIVASA"
+                width={1024}
+                height={341}
+                className="h-7 w-auto object-contain mix-blend-multiply"
+              />
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-surface-muted text-text-secondary border border-border">
                 ETHTESTNET-2026
               </span>

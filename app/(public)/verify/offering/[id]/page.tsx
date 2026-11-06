@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { runOfferingVerificationChecks, defaultDbReader } from '@/lib/verify/checks';
 import { PageContainer } from '@/components/shell/PageContainer';
@@ -54,9 +55,9 @@ export default async function PublicVerifyOfferingPage({ params }: VerifyOfferin
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-card border border-border rounded-lg p-6 shadow-sm">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-serif text-lg font-bold tracking-tight text-brand-primary">
-                NIVASA
-              </span>
+              <Link href="/" className="flex items-center">
+                <Image src="/nivasa-wordmark.png" alt="NIVASA" width={1024} height={341} className="h-6 w-auto object-contain mix-blend-multiply" />
+              </Link>
               <span className="text-text-secondary text-xs">/</span>
               <span className="text-xs font-mono font-medium text-text-secondary uppercase">
                 Zero-Login Integrity Audit

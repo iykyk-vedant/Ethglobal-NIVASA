@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@supabase/supabase-js';
 
 export default function SignInPage() {
@@ -70,6 +71,9 @@ export default function SignInPage() {
     <main className="max-w-lg mx-auto w-full px-4 py-12">
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6 sm:p-8 shadow-sm space-y-5">
         <div>
+          <Link href="/" className="inline-block mb-3">
+            <Image src="/nivasa-wordmark.png" alt="NIVASA" width={1024} height={341} priority className="h-9 w-auto object-contain mix-blend-multiply" />
+          </Link>
           <p className="text-xs font-mono uppercase tracking-wide text-[var(--text-secondary)]">Authorized account access</p>
           <h1 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">Sign in to NIVASA</h1>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">Use an account provisioned for your role. Roles are read from the authenticated account; this page does not let you assign yourself a role.</p>

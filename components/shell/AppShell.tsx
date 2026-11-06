@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { SidebarNavigation } from "./SidebarNavigation";
 import { MobileBottomNavigation } from "./MobileBottomNavigation";
@@ -85,9 +86,14 @@ export function AppShell({
           </button>
 
           <Link href="/" className="flex items-center gap-2 group">
-            <span className="font-serif font-bold text-xl tracking-tight text-brand-primary">
-              NIVASA
-            </span>
+            <Image
+              src="/nivasa-wordmark.png"
+              alt="NIVASA"
+              width={1024}
+              height={341}
+              priority
+              className="h-7 sm:h-8 w-auto object-contain mix-blend-multiply"
+            />
             <span className="hidden sm:inline-block text-[10px] uppercase tracking-wider font-mono text-text-secondary bg-surface-muted px-1.5 py-0.5 rounded border border-border">
               Console
             </span>

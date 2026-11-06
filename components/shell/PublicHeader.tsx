@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ShieldCheck, ArrowRight, Building2 } from 'lucide-react';
 
 export function PublicHeader() {
@@ -8,9 +9,14 @@ export function PublicHeader() {
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <span className="font-serif text-2xl font-bold tracking-tight text-brand-primary group-hover:text-brand-secondary transition-colors">
-              NIVASA
-            </span>
+            <Image
+              src="/nivasa-wordmark.png"
+              alt="NIVASA"
+              width={1024}
+              height={341}
+              priority
+              className="h-8 sm:h-9 w-auto object-contain mix-blend-multiply"
+            />
             <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-surface-muted text-text-secondary border border-border">
               PROTOTYPE
             </span>

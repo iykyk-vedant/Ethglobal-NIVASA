@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
@@ -11,7 +12,6 @@ interface Props {
   merkleRoot: string;
   isEligibleVerifier: boolean;
   sodReason?: string;
-  onSuccess: () => void;
 }
 
 export function ReviewDecisionForm({
@@ -21,8 +21,8 @@ export function ReviewDecisionForm({
   merkleRoot,
   isEligibleVerifier,
   sodReason,
-  onSuccess,
 }: Props) {
+  const router = useRouter();
   const [decision, setDecision] = useState<'verified' | 'rejected' | 'needs_more_information'>('verified');
   const [reason, setReason] = useState('');
   const [limitations, setLimitations] = useState('');
@@ -77,7 +77,7 @@ export function ReviewDecisionForm({
         throw new Error(data.message || 'Verification submission failed');
       }
 
-      onSuccess();
+      router.refresh();
     } catch (err: unknown) {
       setErrorMsg((err as Error).message);
     } finally {

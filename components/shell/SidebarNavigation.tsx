@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { UserRole } from '@/lib/auth/roles';
 import {
@@ -87,8 +88,14 @@ export function SidebarNavigation({
     >
       <div className="h-14 flex items-center justify-between px-4 border-b border-border">
         {!collapsed && (
-          <Link href="/" className="font-serif font-bold text-lg text-brand-primary tracking-tight">
-            NIVASA
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/nivasa-wordmark.png"
+              alt="NIVASA"
+              width={1024}
+              height={341}
+              className="h-7 w-auto object-contain mix-blend-multiply"
+            />
           </Link>
         )}
         <button

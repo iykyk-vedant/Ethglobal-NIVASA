@@ -29,7 +29,7 @@ interface Props {
   documents: DocumentRowData[];
   isApprovedManifest: boolean;
   canEdit: boolean;
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
 export function EvidenceChecklistTable({
@@ -234,7 +234,7 @@ export function EvidenceChecklistTable({
         onClose={() => setActiveUploadCode(null)}
         onSuccess={() => {
           setActiveUploadCode(null);
-          onRefresh();
+          onRefresh?.();
         }}
       />
 

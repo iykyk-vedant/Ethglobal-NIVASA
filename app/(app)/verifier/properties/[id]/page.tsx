@@ -210,7 +210,6 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
           documents={activeDocs}
           isApprovedManifest={latestManifest?.status === 'approved'}
           canEdit={false}
-          onRefresh={() => {}}
         />
       </div>
 
@@ -223,7 +222,6 @@ export default async function VerifierPropertyReviewPage({ params }: Props) {
           merkleRoot={latestManifest.merkle_root}
           isEligibleVerifier={isEligibleVerifier}
           sodReason={sodReason}
-          onSuccess={() => {}}
         />
       ) : (
         <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface-card)] text-xs space-y-1.5">
