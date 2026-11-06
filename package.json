@@ -12,7 +12,8 @@
     "test": "vitest run --fileParallelism=false",
     "adversarial": "node -e \"console.error('Adversarial suite not implemented yet'); process.exit(1)\"",
     "env:check": "node scripts/env-check.mjs",
-    "ats:gate": "tsx scripts/ats-gate.ts"
+    "ats:gate": "tsx scripts/ats-gate.ts",
+    "restriction:proof": "tsx scripts/restriction-proof.ts"
   },
   "dependencies": {
     "@hashgraph/asset-tokenization-sdk": "^8.0.0",
