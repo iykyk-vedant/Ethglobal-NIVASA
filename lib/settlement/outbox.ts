@@ -45,15 +45,19 @@ export interface EnqueueJobParams {
  * Enqueues a job into the outbox.
  * Idempotent: returns existing job if duplicate (type, dedupe_key) is already queued.
  */
-export async function enqueueOutboxJob(params: EnqueueJobParams): Promise<{ id: string; isDuplicate: boolean }> {
+export async function enqueueOutboxJob(params: EnqueueJobParams | string, dedupeKeyArg?: string, payloadArg?: Record<string, any>): Promise<{ id: string; isDuplicate: boolean }> {
+  const p: EnqueueJobParams =
+    typeof params === 'string'
+      ? { type: params, dedupeKey: dedupeKeyArg || '', payload: payloadArg || {} }
+      : params;
   const admin = getAdminDbClient();
 
   // Check if job with (type, dedupe_key) already exists
   const { data: existing } = await admin
     .from('outbox_jobs')
     .select('id, status')
-    .eq('type', params.type)
-    .eq('dedupe_key', params.dedupeKey)
+    .eq('type', p.type)
+    .eq('dedupe_key', p.dedupeKey)
     .maybeSingle();
 
   if (existing) {
@@ -63,13 +67,13 @@ export async function enqueueOutboxJob(params: EnqueueJobParams): Promise<{ id: 
   const { data, error } = await admin
     .from('outbox_jobs')
     .insert({
-      type: params.type,
-      dedupe_key: params.dedupeKey,
-      payload: params.payload || {},
-      order_id: params.orderId || null,
-      offering_id: params.offeringId || null,
-      property_id: params.propertyId || null,
-      max_attempts: params.maxAttempts || 5,
+      type: p.type,
+      dedupe_key: p.dedupeKey,
+      payload: p.payload || {},
+      order_id: p.orderId || null,
+      offering_id: p.offeringId || null,
+      property_id: p.propertyId || null,
+      max_attempts: p.maxAttempts || 5,
       status: 'pending',
       attempts: 0,
     })
@@ -82,8 +86,8 @@ export async function enqueueOutboxJob(params: EnqueueJobParams): Promise<{ id: 
       const { data: raced } = await admin
         .from('outbox_jobs')
         .select('id')
-        .eq('type', params.type)
-        .eq('dedupe_key', params.dedupeKey)
+        .eq('type', p.type)
+        .eq('dedupe_key', p.dedupeKey)
         .single();
       return { id: raced?.id || '', isDuplicate: true };
     }

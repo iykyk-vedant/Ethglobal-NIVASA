@@ -1,6 +1,6 @@
 /**
  * POST /api/cron/worker
- * ARCH §14.3 · PRD FR-6.5 · PLAN M4.5
+ * ARCH §14.3 · PRD FR-6.5 · PLAN M4.5, M5.8
  *
  * Background worker execution endpoint protected strictly by CRON_SECRET.
  * Bounded work per invocation (max 5 jobs) to guarantee execution within platform timeouts.
@@ -10,6 +10,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claimOutboxJobs, completeOutboxJob, failOutboxJob } from '@/lib/settlement/outbox';
 import { processSyncEligibility } from '@/lib/settlement/jobs/sync-eligibility';
+import { processAllocateUnits } from '@/lib/settlement/jobs/allocate-units';
+import { processReconcileOrder } from '@/lib/settlement/jobs/reconcile-order';
+import {
+  processExpireReservations,
+  processReconcileSupply,
+  processStuckOrders,
+} from '@/lib/settlement/jobs/maintenance';
 import { formatErrorResponse, AppError, ErrorCodes } from '@/lib/validation/errors';
 
 export async function POST(req: NextRequest) {
@@ -45,6 +52,26 @@ export async function POST(req: NextRequest) {
         switch (job.type) {
           case 'sync_eligibility':
             output = await processSyncEligibility(job.payload as any);
+            break;
+
+          case 'allocate_units':
+            output = await processAllocateUnits(job.payload as any);
+            break;
+
+          case 'reconcile_order':
+            output = await processReconcileOrder(job.payload as any);
+            break;
+
+          case 'expire_reservations':
+            output = await processExpireReservations();
+            break;
+
+          case 'reconcile_supply':
+            output = await processReconcileSupply(job.payload?.offeringId);
+            break;
+
+          case 'stuck_orders':
+            output = await processStuckOrders();
             break;
 
           default:

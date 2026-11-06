@@ -318,12 +318,20 @@ export async function verifyMirrorTransaction(
 ): Promise<ChainReadResult<{ confirmed: boolean; result: string; timestamp?: string }>> {
   const { mirrorNodeUrl } = getHederaConfig();
   // Standard Hedera txId: "0.0.X@12345.678" -> Mirror Node format: "0.0.X-12345-678"
-  const formattedId = txId.replace('@', '-').replace(/\./g, '-');
+  const [acc, time] = txId.split('@');
+  const formattedId = time ? `${acc}-${time.replace('.', '-')}` : txId;
   const url = `${mirrorNodeUrl}/api/v1/transactions/${formattedId}`;
   const lastSyncAt = new Date().toISOString();
 
   try {
-    const res = await fetch(url);
+    let res = await fetch(url);
+    if (!res.ok && res.status === 404) {
+      for (let retry = 0; retry < 3; retry++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await fetch(url);
+        if (res.ok) break;
+      }
+    }
     if (!res.ok) {
       if (res.status === 404) {
         return {

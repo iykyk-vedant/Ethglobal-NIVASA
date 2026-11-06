@@ -138,6 +138,7 @@ export function getDeployerClient(): Client {
  * Formats a real Hedera transaction ID to HashScan explorer URL.
  */
 export function getHashScanTxUrl(txId: string): string {
-  const formatted = txId.replace('@', '-').replace(/(\.\d+)$/, '-$1').replace(/\./g, '-');
-  return `https://hashscan.io/testnet/transaction/${txId}`;
+  const [acc, time] = txId.split('@');
+  const formatted = time ? `${acc}-${time.replace('.', '-')}` : txId;
+  return `https://hashscan.io/testnet/transaction/${formatted}`;
 }

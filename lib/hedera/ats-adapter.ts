@@ -269,6 +269,7 @@ export class SdkAtsAdapter implements AtsAdapter {
     const client = getIssuerClient();
 
     const tx = new ContractExecuteTransaction()
+      .setTransactionId(TransactionId.fromString(p.txId))
       .setContractId(ContractId.fromString(p.targetContract))
       .setGas(800_000)
       .setFunctionParameters(Buffer.from(p.encodedCalldata.slice(2), 'hex'));
