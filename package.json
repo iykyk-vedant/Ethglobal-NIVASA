@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "lint:tokens": "node scripts/lint-tokens.mjs",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism=false",
     "adversarial": "node -e \"console.error('Adversarial suite not implemented yet'); process.exit(1)\"",
     "env:check": "node scripts/env-check.mjs",
     "ats:gate": "tsx scripts/ats-gate.ts"

@@ -276,6 +276,22 @@ describe('Milestone M2: Database, Integrity, RLS, Audit Chain & Settlement Engin
   describe('6. Atomic Settlement Engine & reserve_units (ARCH §17.4)', () => {
     beforeEach(async () => {
       await pgClient.query(`UPDATE offerings SET status = 'active' WHERE id = $1`, [DEMO_OFFERING_ID]);
+      await pgClient.query(`
+        UPDATE profiles
+           SET wallet_address = '0x0000000000000000000000000000000000ace2c6',
+               wallet_verified_at = now()
+         WHERE id = $1
+      `, [DEMO_INVESTOR_ELIGIBLE_ID]);
+      await pgClient.query(`
+        INSERT INTO investor_eligibility (
+          user_id, offering_id, status, policy_version, reviewed_by, valid_until, reason_code, chain_status
+        ) VALUES (
+          $1, $2, 'eligible', 'v1.0', $3, now() + interval '1 year', 'VERIFIED_KYC_ACCREDITED', 'registered'
+        )
+        ON CONFLICT (user_id, coalesce(offering_id, '00000000-0000-0000-0000-000000000000'::uuid))
+        WHERE status IN ('pending', 'eligible')
+        DO UPDATE SET status = 'eligible', chain_status = 'registered', valid_until = now() + interval '1 year'
+      `, [DEMO_INVESTOR_ELIGIBLE_ID, DEMO_OFFERING_ID, DEMO_VERIFIER1_ID]);
     });
 
     it('successfully reserves units for eligible investor with verified wallet', async () => {
