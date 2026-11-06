@@ -19,19 +19,27 @@ NIVASA is built on Next.js 15 (App Router) and is configured for native deployme
 5. Click **Deploy**.
 
 ### Automated Background Worker (Vercel Cron)
-The repository includes a [vercel.json](../vercel.json) that automatically configures Vercel Cron to invoke the background settlement outbox worker:
+The repository includes a [vercel.json](../vercel.json) configured for Vercel Hobby accounts (daily execution at midnight UTC):
 
 ```json
 {
   "crons": [
     {
       "path": "/api/cron/worker",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
 ```
-Vercel invokes `/api/cron/worker` once every minute with `Authorization: Bearer <CRON_SECRET>`. Both `GET` and `POST` methods are supported.
+
+> [!NOTE]
+> **Vercel Hobby Plan Cron Limit:**  
+> Vercel Hobby (free) accounts permit cron jobs to run at most **once per day** (`0 0 * * *`). If you require **1-minute execution intervals on free tier**:
+> 1. Sign up for free at [cron-job.org](https://cron-job.org) (or use EasyCron / Upstash).
+> 2. Create a new cron job pointing to: `https://<your-vercel-domain>/api/cron/worker`
+> 3. Schedule: Every 1 minute.
+> 4. Method: `POST` or `GET`.
+> 5. Header: `Authorization: Bearer <YOUR_CRON_SECRET>`
 
 ---
 
@@ -145,3 +153,4 @@ When `APP_ENV=production` or `NODE_ENV=production`:
      -H "Authorization: Bearer <CRON_SECRET>"
    ```
    Expected response: `200 OK` with JSON `{ "success": true, "workerId": "...", "processedCount": ... }`.
+
