@@ -1,0 +1,88 @@
+{
+  "state": "Maharashtra",
+  "version": "1.0",
+  "disclaimer": "Illustrative checklist for prototype evaluation; does not constitute legal title clearance or statutory legal advice under Maharashtra state laws.",
+  "items": [
+    {
+      "code": "property_card",
+      "name": "Property Card (7/12 or City Survey Extract)",
+      "issuing_authority": "Revenue Department / Land Records (Bhoomi Abhilekh)",
+      "weight": 15,
+      "required": true,
+      "max_age_days": 90,
+      "description": "Extract of City Survey or 7/12 proving current registered title and ownership history."
+    },
+    {
+      "code": "sale_deed",
+      "name": "Registered Sale / Conveyance Deed",
+      "issuing_authority": "Sub-Registrar of Assurances (IGR Maharashtra)",
+      "weight": 15,
+      "required": true,
+      "max_age_days": null,
+      "description": "Registered deed transferring title to the current owner/issuer."
+    },
+    {
+      "code": "index_ii",
+      "name": "Index II (Registration Summary)",
+      "issuing_authority": "Sub-Registrar of Assurances (IGR Maharashtra)",
+      "weight": 10,
+      "required": true,
+      "max_age_days": null,
+      "description": "Official receipt and summary issued post-registration by the Sub-Registrar."
+    },
+    {
+      "code": "encumbrance_certificate",
+      "name": "Encumbrance Search Report (13-30 Years)",
+      "issuing_authority": "Advocate / Sub-Registrar Search",
+      "weight": 15,
+      "required": true,
+      "max_age_days": 90,
+      "description": "Search certificate confirming property is free of registered encumbrances, charges, or liens."
+    },
+    {
+      "code": "approved_plans",
+      "name": "Approved Building & Sanction Plans",
+      "issuing_authority": "Municipal Corporation (MCGM / PMC / CIDCO)",
+      "weight": 10,
+      "required": true,
+      "max_age_days": null,
+      "description": "Town planning sanction and building approval drawings."
+    },
+    {
+      "code": "occupancy_certificate",
+      "name": "Occupancy Certificate (OC)",
+      "issuing_authority": "Municipal Corporation (MCGM / PMC / CIDCO)",
+      "weight": 10,
+      "required": true,
+      "max_age_days": null,
+      "description": "Certificate from competent municipal planning authority confirming building is fit for occupation."
+    },
+    {
+      "code": "property_tax_receipt",
+      "name": "Latest Property Tax Assessment & Paid Receipt",
+      "issuing_authority": "Municipal Corporation Tax Department",
+      "weight": 5,
+      "required": true,
+      "max_age_days": 365,
+      "description": "Proof of municipal tax clearance for the current assessment period."
+    },
+    {
+      "code": "valuation_report",
+      "name": "Independent Valuation Report (IBBI Registered)",
+      "issuing_authority": "Registered Valuer (IBBI / IOV)",
+      "weight": 15,
+      "required": true,
+      "max_age_days": 365,
+      "description": "Appraisal report determining current market valuation and net capitalization rates."
+    },
+    {
+      "code": "lease_agreement",
+      "name": "Registered Lease / Rent Roll Evidence",
+      "issuing_authority": "Sub-Registrar / Commercial Landlord",
+      "weight": 5,
+      "required": false,
+      "max_age_days": 365,
+      "description": "Commercial tenancy agreement or rent roll confirming tenant occupancy and rental cash flows."
+    }
+  ]
+}

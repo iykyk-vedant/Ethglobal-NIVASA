@@ -27,3 +27,7 @@ Thumbs.db
 *.swo
 .idea/
 .vscode/
+
+# Local evidence storage uploads
+storage/
+
