@@ -125,3 +125,4 @@ export function VerificationSummary({
     </div>
   );
 }
+
