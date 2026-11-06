@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SettlementTimeline } from '@/components/timeline/SettlementTimeline';
 import { AllocationAttemptList, AllocationAttempt } from '@/components/timeline/AllocationAttemptList';
+import { ReconciliationAssertionPanel } from '@/components/timeline/ReconciliationAssertionPanel';
 import { ReceiptLinkCard } from '@/components/investor/ReceiptLinkCard';
 import { formatINR } from '@/lib/money/decimal';
 import {
@@ -441,67 +442,15 @@ export default function OrderDetailPage({ params }: OrderPageProps) {
           {/* Allocation Attempts List (Handles unknown as 'Checking transaction outcome') */}
           <AllocationAttemptList attempts={attempts} />
 
-          {/* Recovery Assertions Panel (ARCH §14.7) */}
+          {/* Recovery Assertions Panel (ARCH §14.7, UI §8.7) */}
           {assertions && (
-            <div
-              className="bg-surface-card border border-border rounded-lg p-5 shadow-sm space-y-3"
-              data-testid="recovery-assertions-panel"
-            >
-              <div className="flex items-center justify-between border-b border-border pb-2.5">
-                <div>
-                  <h3 className="text-sm font-semibold text-text-primary">
-                    Settlement Recovery Assertions (ARCH §14.7)
-                  </h3>
-                  <p className="text-xs text-text-secondary mt-0.5">
-                    Immutable verification metrics from reconciliation worker.
-                  </p>
-                </div>
-                <Badge
-                  variant={assertions.isReconciled ? 'success' : 'neutral'}
-                  className="text-xs"
-                >
-                  {assertions.isReconciled ? 'Reconciled' : 'Pending Verification'}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-                <div className="p-3 rounded bg-surface-muted border border-border">
-                  <span className="text-[11px] text-text-secondary font-sans block">Units Ordered</span>
-                  <span className="text-base font-bold text-text-primary mt-0.5 block">
-                    {assertions.unitsOrdered}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded bg-surface-muted border border-border">
-                  <span className="text-[11px] text-text-secondary font-sans block">
-                    Units on Chain Confirmed
-                  </span>
-                  <span
-                    className={`text-base font-bold mt-0.5 block ${
-                      assertions.isReconciled ? 'text-status-success' : 'text-text-primary'
-                    }`}
-                  >
-                    {assertions.unitsOnChainConfirmed}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded bg-surface-muted border border-border">
-                  <span className="text-[11px] text-text-secondary font-sans block">Attempts Used</span>
-                  <span className="text-base font-bold text-text-primary mt-0.5 block">
-                    {assertions.attemptsUsed}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded bg-surface-muted border border-border">
-                  <span className="text-[11px] text-text-secondary font-sans block">
-                    Duplicates Prevented
-                  </span>
-                  <span className="text-base font-bold text-brand-primary mt-0.5 block">
-                    {assertions.duplicatesPrevented}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ReconciliationAssertionPanel
+              assertions={{
+                ...assertions,
+                confirmedTxId: attempts.find((a) => a.status === 'confirmed')?.chain_tx_id || null,
+              }}
+              orderStatus={order.status}
+            />
           )}
 
           {/* Receipt Link Card (Exposed ONLY when order.status === 'COMPLETED') */}

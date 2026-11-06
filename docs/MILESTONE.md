@@ -324,13 +324,12 @@
 **Goal:** Make the failure path visible and prove recovery.
 **Refs:** ARCH §14.7 · PRD FR-5.9–5.10 · UI §8.7, §8.11
 
-- [ ] M12.1 `lib/settlement/faults.ts` + `POST /api/demo/faults` (admin, `DEMO_FAULTS=true`, production-refusing, audited): one-shot `timeout_after_submit`, `fail_before_submit`, `duplicate_job`. Faults act on the **real** code path and chain.
-- [ ] M12.2 `ReconciliationAssertionPanel`: units on chain, units ordered, attempts used, duplicates prevented — values from the real reconciliation result.
-- [ ] M12.3 Timeline polish on `/investor/orders/[id]` and admin order view (all attempts with tx IDs, statuses, HashScan links).
-- [ ] M12.4 Tests (D4 / adversarial 9–10): each armed fault ends with exactly one confirmed allocation and on-chain units = ordered units.
+- [x] M12.1 `lib/settlement/faults.ts` + `POST /api/demo/faults` (admin, `DEMO_FAULTS=true`, production-refusing, audited): one-shot `timeout_after_submit`, `fail_before_submit`, `duplicate_job`. Faults act on the **real** code path and chain.
+- [x] M12.2 `ReconciliationAssertionPanel`: units on chain, units ordered, attempts used, duplicates prevented — values from the real reconciliation result.
+- [x] M12.3 Timeline polish on `/investor/orders/[id]` and admin order view (all attempts with tx IDs, statuses, HashScan links).
+- [x] M12.4 Tests (D4 / adversarial 9–10): each armed fault ends with exactly one confirmed allocation and on-chain units = ordered units.
 
-**Exit:** with `timeout_after_submit` armed, the worker recovers via the stored tx ID; one allocation; assertion panel correct.
-**Cut:** reduce to the timeout fault only (ladder #8).
+**Exit:** with `timeout_after_submit` armed, the worker recovers via the stored tx ID; one allocation; assertion panel correct. [PASS - test/m12-settlement-under-failure.test.ts 7/7 green, Hedera Testnet consensus recovery verified]
 
 ---
 
@@ -427,6 +426,7 @@ Track and update with results: live deadline + prize requirements · ETHGlobal r
 | Date/time (IST) | Milestone.Task | Status | Evidence (tx ID / test / file) | Notes / deviations |
 | --- | --- | --- | --- | --- |
 | 2026-11-06 18:35 | M11 (D3 Verify Pages) | DONE | `test/m11-verify-pages.test.ts` (20/20 pass), 8 responsive screenshots in `docs/screenshots/m11/` | C1–C7 pure checks, zero-PII receipts, 4 tamper tests, rate-limited public APIs |
+| 2026-11-06 19:48 | M12 (D4 Failure Settlement) | DONE | `test/m12-settlement-under-failure.test.ts` (7/7 pass), 8 responsive screenshots in `docs/screenshots/m12/` | Fault injector (timeout/fail/duplicate), persistent banner, assertion panel, admin demo ops |
 
 ---
 

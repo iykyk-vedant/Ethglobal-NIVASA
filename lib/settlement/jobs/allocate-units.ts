@@ -19,6 +19,7 @@ import { getAdminDbClient, appendAuditLog } from '@/lib/db/admin';
 import { getAtsAdapter } from '@/lib/hedera/ats-adapter';
 import { verifyMirrorTransaction } from '@/lib/hedera/chain-reads';
 import { enqueueOutboxJob } from '@/lib/settlement/outbox';
+import { consumeArmedFault } from '@/lib/settlement/faults';
 
 export interface AllocateUnitsPayload {
   orderId: string;
@@ -93,6 +94,15 @@ export async function processAllocateUnits(
       action: 'already_confirmed',
       txId: confirmedAttempt.chain_tx_id,
     };
+  }
+
+  // Resolve one-shot fault injection (from explicit payload or database-armed state)
+  let effectiveFault: 'timeout_after_submit' | 'fail_before_submit' | undefined = payload.injectedFault;
+  if (!effectiveFault) {
+    const armed = await consumeArmedFault(order.id);
+    if (armed && (armed.fault_type === 'timeout_after_submit' || armed.fault_type === 'fail_before_submit')) {
+      effectiveFault = armed.fault_type;
+    }
   }
 
   // 3. Inspect existing active / unknown attempts (ARCH §14.2: NEVER two live attempts)
@@ -352,7 +362,7 @@ export async function processAllocateUnits(
   }
 
   // Fault injection: fail_before_submit
-  if (payload.injectedFault === 'fail_before_submit') {
+  if (effectiveFault === 'fail_before_submit') {
     await admin
       .from('allocation_attempts')
       .update({
@@ -407,7 +417,7 @@ export async function processAllocateUnits(
   }
 
   // Fault injection: timeout_after_submit (worker acts as if response was lost)
-  if (payload.injectedFault === 'timeout_after_submit') {
+  if (effectiveFault === 'timeout_after_submit') {
     await admin
       .from('allocation_attempts')
       .update({

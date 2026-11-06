@@ -38,6 +38,25 @@ export function AppShell({
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [serverFaultsEnabled, setServerFaultsEnabled] = useState(demoFlags?.faultsEnabled ?? false);
+
+  // Query server state for active demo flags (Task 2: Persistent banner from server state)
+  React.useEffect(() => {
+    let isMounted = true;
+    fetch('/api/demo/faults')
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && typeof data.enabled === 'boolean') {
+          setServerFaultsEnabled(data.enabled);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activeFaultsFlag = demoFlags?.faultsEnabled ?? serverFaultsEnabled;
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-page text-text-primary">
@@ -99,10 +118,10 @@ export function AppShell({
 
         {/* Content View */}
         <main className="flex-1 flex flex-col overflow-y-auto pb-16 md:pb-0">
-          {/* Demo flag banner when active */}
+          {/* Demo flag banner when active (server-backed state) */}
           <DemoFlagBanner
             paymentsEnabled={demoFlags.paymentsEnabled}
-            faultsEnabled={demoFlags.faultsEnabled}
+            faultsEnabled={activeFaultsFlag}
             eventsEnabled={demoFlags.eventsEnabled}
           />
 
