@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         fault: armed,
+        auditId: armed.audit_id,
         message: `Fault '${armed.fault_type}' armed successfully for ${
           armed.order_id ? `order ${armed.order_id}` : 'next order allocation'
         }.`,

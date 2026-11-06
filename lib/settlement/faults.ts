@@ -31,6 +31,7 @@ export interface ArmedFault {
   created_at: string;
   consumed_at: string | null;
   updated_at: string;
+  audit_id?: number;
 }
 
 export interface ArmFaultParams {
@@ -134,7 +135,7 @@ export async function armFault(params: ArmFaultParams): Promise<ArmedFault> {
   }
 
   // Record in audit log
-  await appendAuditLog({
+  const auditId = await appendAuditLog({
     actorUserId: params.actorUserId || null,
     actorWallet: params.actorWallet || 'admin:console',
     action: 'fault_injection_armed',
@@ -145,7 +146,10 @@ export async function armFault(params: ArmFaultParams): Promise<ArmedFault> {
     }: ${params.reason.trim()}`,
   });
 
-  return newFault as ArmedFault;
+  return {
+    ...newFault,
+    audit_id: auditId,
+  } as ArmedFault;
 }
 
 /**

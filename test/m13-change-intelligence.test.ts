@@ -386,7 +386,7 @@ describe('Milestone M13: D5 Change Intelligence & 0G Verification', () => {
       // Read offering status & outbox count before
       const { data: offeringBefore } = await adminDb
         .from('offerings')
-        .select('status, ats_asset_ref')
+        .select('status')
         .eq('property_id', DEMO_PROPERTY_ID)
         .single();
 

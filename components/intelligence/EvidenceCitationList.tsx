@@ -54,3 +54,4 @@ export function EvidenceCitationList({ propertyId, sourceIds }: EvidenceCitation
     </div>
   );
 }
+

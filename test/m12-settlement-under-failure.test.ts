@@ -110,6 +110,7 @@ describe('Milestone M12: D4 Settlement Under Failure & Fault Injector', () => {
     await pgClient.query(`
       UPDATE offerings SET status = 'active' WHERE id = '${DEMO_OFFERING_ID}';
       UPDATE demo_fault_injections SET status = 'cancelled' WHERE status = 'armed';
+      UPDATE profiles SET wallet_address = NULL WHERE wallet_address = '${investorWallet.address.toLowerCase()}' AND id != '${INVESTOR_ELIGIBLE_ID}';
       UPDATE profiles
          SET wallet_address = '${investorWallet.address.toLowerCase()}',
              wallet_verified_at = now()

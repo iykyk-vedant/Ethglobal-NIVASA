@@ -134,3 +134,20 @@ export async function grantUserRole(userId: string, role: string, grantedBy?: st
 
   return data as string;
 }
+
+/**
+ * Revokes an active role from a user by setting revoked_at = now().
+ */
+export async function revokeUserRole(userId: string, role: string): Promise<void> {
+  const admin = getAdminDbClient();
+  const { error } = await admin
+    .from('user_roles')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('role', role)
+    .is('revoked_at', null);
+
+  if (error) {
+    throw error;
+  }
+}

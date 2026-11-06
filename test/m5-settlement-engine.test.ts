@@ -91,6 +91,7 @@ describe('Milestone M5: Settlement Engine & Recovery', () => {
     // Reset offering to active and ensure investor has bound wallet and eligible status
     await pgClient.query(`
       UPDATE offerings SET status = 'active' WHERE id = '${DEMO_OFFERING_ID}';
+      UPDATE profiles SET wallet_address = NULL WHERE wallet_address = '${investorWallet.address.toLowerCase()}' AND id != '${INVESTOR_ELIGIBLE_ID}';
       UPDATE profiles
          SET wallet_address = '${investorWallet.address.toLowerCase()}',
              wallet_verified_at = now()

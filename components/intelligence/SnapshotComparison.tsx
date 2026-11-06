@@ -157,3 +157,4 @@ export function SnapshotComparison({ snapshotFrom, snapshotTo }: SnapshotCompari
     </div>
   );
 }
+

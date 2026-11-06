@@ -11,6 +11,8 @@ import { SettlementTimeline } from '@/components/timeline/SettlementTimeline';
 import { AllocationAttemptList, AllocationAttempt } from '@/components/timeline/AllocationAttemptList';
 import { ReconciliationAssertionPanel, ReconciliationAssertions } from '@/components/timeline/ReconciliationAssertionPanel';
 import { FaultArmDialog } from '@/components/admin/FaultArmDialog';
+import { PaymentConfirmDialog } from '@/components/admin/PaymentConfirmDialog';
+import { PropertyEventDialog } from '@/components/admin/PropertyEventDialog';
 import { FaultType, ArmedFault } from '@/lib/settlement/faults';
 import {
   Sliders,
@@ -20,9 +22,11 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
-  ExternalLink,
-  Layers,
+  Sparkles,
   ArrowRight,
+  ExternalLink,
+  ShieldCheck,
+  Server,
 } from 'lucide-react';
 
 interface OrderSummary {
@@ -33,33 +37,61 @@ interface OrderSummary {
   created_at: string;
 }
 
+interface DemoFlagsResponse {
+  appEnv: string;
+  isProduction: boolean;
+  flags: {
+    DEMO_PAYMENTS: { enabled: boolean; description: string };
+    DEMO_FAULTS: { enabled: boolean; description: string };
+    DEMO_EVENTS: { enabled: boolean; description: string };
+  };
+}
+
 export default function AdminDemoControlsPage() {
+  const [flags, setFlags] = useState<DemoFlagsResponse | null>(null);
   const [activeFaults, setActiveFaults] = useState<ArmedFault[]>([]);
-  const [isEnabled, setIsEnabled] = useState(false);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [selectedOrderData, setSelectedOrderData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isArmDialogOpen, setIsArmDialogOpen] = useState(false);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  // Dialog States
+  const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isPropertyEventDialogOpen, setIsPropertyEventDialogOpen] = useState(false);
+
+  // Feedback & Audit Reference State
+  const [actionMessage, setActionMessage] = useState<{
+    text: string;
+    auditRef?: string | number;
+    type: 'success' | 'error';
+  } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const DEMO_ADMIN_ID = 'f3509049-11fb-4ab4-993b-050c7878d1d3';
 
-  // 1. Fetch live fault status & orders list
+  // 1. Fetch server-backed demo flag status, faults, and orders
   const refreshState = useCallback(async () => {
     try {
-      // Check fault status
+      // Fetch server flags
+      const flagsRes = await fetch('/api/demo/flags', {
+        headers: { 'x-demo-user-id': DEMO_ADMIN_ID },
+      });
+      if (flagsRes.ok) {
+        const json = await flagsRes.json();
+        setFlags(json);
+      }
+
+      // Fetch fault status
       const faultRes = await fetch('/api/demo/faults', {
         headers: { 'x-demo-user-id': DEMO_ADMIN_ID },
       });
       if (faultRes.ok) {
         const json = await faultRes.json();
-        setIsEnabled(json.enabled);
         setActiveFaults(json.activeFaults || []);
       }
 
-      // Fetch recent orders for demo inspection
+      // Fetch recent orders
       const ordersRes = await fetch('/api/investments?limit=10', {
         headers: { 'x-demo-user-id': DEMO_ADMIN_ID },
       });
@@ -78,7 +110,7 @@ export default function AdminDemoControlsPage() {
     }
   }, [selectedOrderId]);
 
-  // 2. Fetch selected order detail for timeline & assertions
+  // 2. Fetch selected order detail
   const fetchSelectedOrder = useCallback(async (orderId: string) => {
     if (!orderId) return;
     try {
@@ -104,7 +136,36 @@ export default function AdminDemoControlsPage() {
     }
   }, [selectedOrderId, fetchSelectedOrder]);
 
-  // Handle Arm Fault
+  // Confirm Simulated Payment
+  const handleConfirmPayment = async (orderId: string, reason: string) => {
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/demo/payment-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-demo-user-id': DEMO_ADMIN_ID,
+        },
+        body: JSON.stringify({ orderId, reason }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error?.message || 'Payment confirmation failed');
+      }
+
+      setActionMessage({
+        text: `Simulated payment confirmed! Payment ref: ${json.paymentRef}`,
+        auditRef: json.auditId ? `Audit Row #${json.auditId}` : undefined,
+        type: 'success',
+      });
+      await fetchSelectedOrder(orderId);
+      await refreshState();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Arm Fault
   const handleArmFault = async (faultType: FaultType, reason: string, orderId?: string) => {
     setIsProcessing(true);
     try {
@@ -126,14 +187,18 @@ export default function AdminDemoControlsPage() {
         throw new Error(json.error?.message || 'Failed to arm fault');
       }
 
-      setActionMessage(`Armed fault '${faultType}' successfully. Audit logged.`);
+      setActionMessage({
+        text: `Armed fault '${faultType}' successfully.`,
+        auditRef: json.auditId ? `Audit Row #${json.auditId}` : undefined,
+        type: 'success',
+      });
       await refreshState();
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Handle Cancel Fault
+  // Cancel Fault
   const handleCancelFault = async (faultId: string) => {
     setIsProcessing(true);
     try {
@@ -150,7 +215,10 @@ export default function AdminDemoControlsPage() {
       });
 
       if (res.ok) {
-        setActionMessage('Fault injection cancelled.');
+        setActionMessage({
+          text: 'Fault injection cancelled.',
+          type: 'success',
+        });
         await refreshState();
       }
     } finally {
@@ -158,32 +226,36 @@ export default function AdminDemoControlsPage() {
     }
   };
 
-  // Handle Confirm Payment for selected order
-  const handleConfirmPayment = async () => {
-    if (!selectedOrderId) return;
+  // Apply Scripted Property Event
+  const handleApplyPropertyEvent = async (propertyId: string, eventId: string, reason: string) => {
     setIsProcessing(true);
     try {
-      const res = await fetch('/api/demo/payment-confirmation', {
+      const res = await fetch('/api/demo/property-event', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-demo-user-id': DEMO_ADMIN_ID,
         },
-        body: JSON.stringify({ orderId: selectedOrderId }),
+        body: JSON.stringify({ propertyId, eventId, reason }),
       });
+
       const json = await res.json();
-      if (res.ok) {
-        setActionMessage('Simulated payment confirmed! Outbox job enqueued.');
-        await fetchSelectedOrder(selectedOrderId);
-      } else {
-        setActionMessage(`Error: ${json.error?.message || 'Payment confirmation failed'}`);
+      if (!res.ok) {
+        throw new Error(json.error?.message || 'Failed to apply property event');
       }
+
+      setActionMessage({
+        text: `Scripted property event applied (Snapshot #${json.snapshot?.snapshot_no}). AI change intelligence updated.`,
+        auditRef: json.auditId ? `Audit Row #${json.auditId}` : undefined,
+        type: 'success',
+      });
+      await refreshState();
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Handle Run Worker
+  // Run Worker
   const handleRunWorker = async () => {
     setIsProcessing(true);
     try {
@@ -195,12 +267,18 @@ export default function AdminDemoControlsPage() {
       });
       const json = await res.json();
       if (res.ok) {
-        setActionMessage(`Settlement worker executed: ${json.processed || 0} jobs processed.`);
+        setActionMessage({
+          text: `Settlement worker executed: ${json.processed || 0} jobs processed.`,
+          type: 'success',
+        });
         if (selectedOrderId) {
           await fetchSelectedOrder(selectedOrderId);
         }
       } else {
-        setActionMessage(`Worker error: ${json.error?.message || 'Execution failed'}`);
+        setActionMessage({
+          text: `Worker error: ${json.error?.message || 'Execution failed'}`,
+          type: 'error',
+        });
       }
     } finally {
       setIsProcessing(false);
@@ -229,61 +307,155 @@ export default function AdminDemoControlsPage() {
       }
     : null;
 
+  const paymentsEnabled = Boolean(flags?.flags?.DEMO_PAYMENTS?.enabled);
+  const faultsEnabled = Boolean(flags?.flags?.DEMO_FAULTS?.enabled);
+  const eventsEnabled = Boolean(flags?.flags?.DEMO_EVENTS?.enabled);
+  const isProduction = Boolean(flags?.isProduction);
+
   return (
     <AppShell
       initialRole="admin"
       demoFlags={{
-        paymentsEnabled: true,
-        faultsEnabled: isEnabled,
+        paymentsEnabled,
+        faultsEnabled,
       }}
     >
       <PageContainer>
         <div className="space-y-6">
           <PageHeader
-            title="Settlement Fault Injector & Assertion Ops"
-            description="Live demonstration controls for ARCH §14.7 settlement failure and recovery verification."
+            title="Demo Controls & Failure Simulator"
+            description="Server-backed demonstration switches, one-shot fault injectors, and scripted property events (ARCH §14, §16, §19, §21)."
             breadcrumbs={[
               { label: 'Admin', href: '/admin/ops' },
               { label: 'Demo Controls' },
             ]}
           />
 
+          {/* Action / Audit Feedback Banner */}
           {actionMessage && (
-            <div className="p-3 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border-subtle)] text-xs font-mono text-[var(--text-primary)] flex items-center justify-between">
-              <span>{actionMessage}</span>
+            <div
+              className={`p-3.5 rounded-lg border text-xs font-mono flex items-center justify-between gap-3 ${
+                actionMessage.type === 'success'
+                  ? 'bg-[var(--surface-sunken)] border-[var(--status-success)]/40 text-[var(--text-primary)]'
+                  : 'bg-[var(--surface-sunken)] border-[var(--status-danger)]/40 text-[var(--status-danger)]'
+              }`}
+            >
+              <div className="flex items-center gap-2 flex-wrap">
+                <CheckCircle2 className="w-4 h-4 text-[var(--status-success)] shrink-0" />
+                <span>{actionMessage.text}</span>
+                {actionMessage.auditRef && (
+                  <Link
+                    href="/admin/audit"
+                    className="inline-flex items-center gap-1 font-semibold underline text-[var(--brand-primary)] hover:opacity-80 ml-2"
+                  >
+                    <span>[{actionMessage.auditRef} in Audit Chain]</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setActionMessage(null)}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-1"
+                aria-label="Dismiss banner"
               >
                 ✕
               </button>
             </div>
           )}
 
-          {/* Fault Status Card */}
+          {/* Server-Backed Demo Flags Overview */}
           <section className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-lg p-5 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
-              <div className="flex items-center gap-2.5">
-                <Sliders className="w-5 h-5 text-[var(--brand-primary)]" aria-hidden="true" />
+              <div className="flex items-center gap-2">
+                <Server className="w-5 h-5 text-[var(--brand-primary)]" aria-hidden="true" />
                 <div>
                   <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-                    One-Shot Fault Injection Controls (ARCH §14.7, PRD FR-5.10)
+                    Server-Backed Demo Flag State (PLAN M14.3, ARCH §21)
                   </h2>
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                    Acts on the real code path and real Hedera Testnet chain. Refuses in production.
+                    Live environment parameters from server state. All demo capabilities strictly refuse in production.
                   </p>
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
-                <Badge variant={isEnabled ? 'warning' : 'neutral'} className="text-xs font-mono">
-                  {isEnabled ? 'FAULT INJECTION ENABLED (DEMO)' : 'DISABLED'}
+                <Badge variant={isProduction ? 'danger' : 'neutral'} className="text-xs font-mono">
+                  APP_ENV: {flags?.appEnv || 'development'}
                 </Badge>
                 <Button
+                  variant="outline"
+                  onClick={refreshState}
+                  disabled={loading || isProcessing}
+                  className="text-xs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                  <span>Refresh</span>
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* DEMO_PAYMENTS Flag */}
+              <div className="p-3.5 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border-subtle)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">DEMO_PAYMENTS</span>
+                  <Badge variant={paymentsEnabled ? 'success' : 'neutral'} className="text-[10px] font-mono">
+                    {paymentsEnabled ? 'ENABLED' : 'DISABLED'}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-[var(--text-secondary)]">
+                  {flags?.flags?.DEMO_PAYMENTS?.description || 'Simulated INR payment confirmation flow'}
+                </p>
+              </div>
+
+              {/* DEMO_FAULTS Flag */}
+              <div className="p-3.5 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border-subtle)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">DEMO_FAULTS</span>
+                  <Badge variant={faultsEnabled ? 'warning' : 'neutral'} className="text-[10px] font-mono">
+                    {faultsEnabled ? 'ENABLED' : 'DISABLED'}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-[var(--text-secondary)]">
+                  {flags?.flags?.DEMO_FAULTS?.description || 'Settlement failure and idempotency injection'}
+                </p>
+              </div>
+
+              {/* DEMO_EVENTS Flag */}
+              <div className="p-3.5 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border-subtle)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">DEMO_EVENTS</span>
+                  <Badge variant={eventsEnabled ? 'success' : 'neutral'} className="text-[10px] font-mono">
+                    {eventsEnabled ? 'ENABLED' : 'DISABLED'}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-[var(--text-secondary)]">
+                  {flags?.flags?.DEMO_EVENTS?.description || 'Scripted property performance events'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Controls Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 1. Settlement Fault Injection */}
+            <section className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-lg p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-[var(--brand-primary)]" aria-hidden="true" />
+                  <div>
+                    <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                      1. One-Shot Settlement Faults
+                    </h2>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      ARCH §14.7, PRD FR-5.10. Acts on real Hedera Testnet code path.
+                    </p>
+                  </div>
+                </div>
+                <Button
                   variant="primary"
-                  onClick={() => setIsArmDialogOpen(true)}
-                  disabled={!isEnabled}
+                  onClick={() => setIsFaultDialogOpen(true)}
+                  disabled={!faultsEnabled || isProduction || isProcessing}
                   className="text-xs"
                   data-testid="arm-fault-button"
                 >
@@ -291,73 +463,104 @@ export default function AdminDemoControlsPage() {
                   <span>Arm Fault...</span>
                 </Button>
               </div>
-            </div>
 
-            {/* Currently Active Faults */}
-            {activeFaults.length === 0 ? (
-              <div className="p-4 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] italic text-center">
-                No faults currently armed. Normal issuance path active.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <span className="text-xs font-semibold text-[var(--text-primary)] block">
-                  Armed Fault Queue:
-                </span>
-                {activeFaults.map((fault) => (
-                  <div
-                    key={fault.id}
-                    className="p-3.5 rounded-lg border border-[var(--status-warning)]/40 bg-[var(--surface-sunken)] text-xs space-y-2"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="warning" className="text-[11px] font-mono">
+              {activeFaults.length === 0 ? (
+                <div className="p-3 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] italic text-center">
+                  No active faults armed. Normal settlement path active.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <span className="text-xs font-semibold text-[var(--text-primary)] block">
+                    Armed Fault:
+                  </span>
+                  {activeFaults.map((fault) => (
+                    <div
+                      key={fault.id}
+                      className="p-3 rounded-lg border border-[var(--status-warning)]/40 bg-[var(--surface-sunken)] text-xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <Badge variant="warning" className="text-[10px] font-mono">
                           {fault.fault_type}
                         </Badge>
-                        <span className="font-semibold text-[var(--text-primary)]">
-                          {fault.order_id ? `Target: Order ${fault.order_id}` : 'Target: Next Allocation'}
-                        </span>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleCancelFault(fault.id)}
+                          disabled={isProcessing}
+                          className="text-[10px] py-0.5 px-2 h-auto text-[var(--status-danger)]"
+                        >
+                          Cancel
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleCancelFault(fault.id)}
-                        disabled={isProcessing}
-                        className="text-[11px] py-1 px-2.5 h-auto text-[var(--status-danger)]"
-                      >
-                        Cancel Fault
-                      </Button>
+                      <p className="text-[var(--text-secondary)] font-mono text-[11px]">
+                        Target: {fault.order_id ? `Order ${fault.order_id.slice(0, 8)}...` : 'Next allocation'}
+                        <br />
+                        Reason: {fault.reason}
+                      </p>
                     </div>
-                    <p className="text-[var(--text-secondary)] font-mono text-[11px]">
-                      Reason: {fault.reason} · Armed at: {fault.created_at}
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* 2. Scripted Property Events */}
+            <section className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-lg p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[var(--brand-primary)]" aria-hidden="true" />
+                  <div>
+                    <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                      2. Scripted Property Events
+                    </h2>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      ARCH §16.3, PRD FR-8.2. Appends immutable Snapshot #2.
                     </p>
                   </div>
-                ))}
+                </div>
+                <Button
+                  variant="primary"
+                  onClick={() => setIsPropertyEventDialogOpen(true)}
+                  disabled={!eventsEnabled || isProduction || isProcessing}
+                  className="text-xs"
+                  data-testid="apply-property-event-btn"
+                >
+                  <Sparkles className="w-4 h-4 mr-1.5" />
+                  <span>Apply Event...</span>
+                </Button>
               </div>
-            )}
-          </section>
 
-          {/* Workflow Executor & Order Selector */}
+              <div className="p-3.5 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border-subtle)] text-xs space-y-2">
+                <span className="font-semibold text-[var(--text-primary)] block">
+                  Scenario: New Valuation Report (Brigade Tech Gardens)
+                </span>
+                <p className="text-[var(--text-secondary)]">
+                  Appends Snapshot #2 with valuation ₹10.50 Cr (+5%) and occupancy 85% (-10%). Demonstrates 0G change intelligence, metric deltas, and divergence detection.
+                </p>
+                <div className="pt-1">
+                  <Link
+                    href="/intelligence/11111111-1111-1111-1111-111111111111"
+                    className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline font-medium text-xs"
+                  >
+                    <span>View Property Intelligence Dashboard</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* 3. Order Stepper & Settlement Inspector */}
           <section className="bg-[var(--surface-primary)] border border-[var(--border-subtle)] rounded-lg p-5 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
               <div>
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-                  Settlement Flow Stepper &amp; Test Order Inspector
+                  3. Settlement Flow Stepper &amp; Test Order Inspector
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                  Select an order to step through simulated payment, worker execution, and reconciliation recovery.
+                  Inspect order states, trigger simulated payment receipts, and execute the background settlement worker.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={refreshState}
-                  disabled={isProcessing}
-                  className="text-xs"
-                  title="Refresh state"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
-                  <span>Refresh</span>
-                </Button>
                 <Button
                   variant="outline"
                   onClick={handleRunWorker}
@@ -371,7 +574,6 @@ export default function AdminDemoControlsPage() {
               </div>
             </div>
 
-            {/* Order Selector */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">
                 <label htmlFor="order-selector" className="font-medium text-[var(--text-primary)] block">
@@ -396,20 +598,20 @@ export default function AdminDemoControlsPage() {
                   {selectedOrderData.order?.status === 'PAYMENT_PENDING' && (
                     <Button
                       variant="primary"
-                      onClick={handleConfirmPayment}
-                      disabled={isProcessing}
+                      onClick={() => setIsPaymentDialogOpen(true)}
+                      disabled={!paymentsEnabled || isProduction || isProcessing}
                       className="text-xs"
                       data-testid="admin-confirm-payment-btn"
                     >
                       <CreditCard className="w-4 h-4 mr-1.5" />
-                      <span>Confirm Simulated Payment</span>
+                      <span>Confirm Simulated Payment...</span>
                     </Button>
                   )}
                   <Link
                     href={`/investor/orders/${selectedOrderId}`}
                     className="inline-flex items-center gap-1 text-xs text-[var(--brand-primary)] hover:underline font-medium p-2.5"
                   >
-                    <span>View Investor Page</span>
+                    <span>View Investor Order Page</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -417,7 +619,7 @@ export default function AdminDemoControlsPage() {
             </div>
           </section>
 
-          {/* Settlement Timeline for Selected Order */}
+          {/* Settlement Timeline & Assertions for Selected Order */}
           {selectedOrderData && (
             <>
               <SettlementTimeline
@@ -428,10 +630,8 @@ export default function AdminDemoControlsPage() {
                 attempts={attempts}
               />
 
-              {/* Allocation Attempts List (Handles unknown as 'Checking transaction outcome') */}
               <AllocationAttemptList attempts={attempts} />
 
-              {/* Recovery Assertions Panel (ARCH §14.7) */}
               {assertions && (
                 <ReconciliationAssertionPanel
                   assertions={assertions}
@@ -443,10 +643,32 @@ export default function AdminDemoControlsPage() {
 
           {/* Fault Arm Confirmation Dialog */}
           <FaultArmDialog
-            isOpen={isArmDialogOpen}
-            onClose={() => setIsArmDialogOpen(false)}
+            isOpen={isFaultDialogOpen}
+            onClose={() => setIsFaultDialogOpen(false)}
             onConfirm={handleArmFault}
             targetOrderId={selectedOrderId}
+            isSubmitting={isProcessing}
+          />
+
+          {/* Simulated Payment Confirmation Dialog */}
+          <PaymentConfirmDialog
+            isOpen={isPaymentDialogOpen}
+            onClose={() => setIsPaymentDialogOpen(false)}
+            onConfirm={handleConfirmPayment}
+            order={selectedOrderData?.order ? {
+              id: selectedOrderData.order.id,
+              units: selectedOrderData.order.units,
+              amount_inr: selectedOrderData.order.amountInr,
+            } : null}
+            isSubmitting={isProcessing}
+          />
+
+          {/* Scripted Property Event Confirmation Dialog */}
+          <PropertyEventDialog
+            isOpen={isPropertyEventDialogOpen}
+            onClose={() => setIsPropertyEventDialogOpen(false)}
+            onConfirm={handleApplyPropertyEvent}
+            propertyId="11111111-1111-1111-1111-111111111111"
             isSubmitting={isProcessing}
           />
         </div>

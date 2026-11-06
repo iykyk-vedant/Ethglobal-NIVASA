@@ -23,6 +23,7 @@ import {
 const paymentConfirmSchema = z.object({
   orderId: z.string().uuid('Invalid order ID format'),
   simulatedPaymentRef: z.string().optional(),
+  reason: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Append tamper-evident audit record
-    await appendAuditLog({
+    const auditId = await appendAuditLog({
       actorUserId: auth.userId,
       actorWallet: 'admin',
       action: 'payment_confirmed_demo',
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
       resourceId: order.id,
       beforeHash: order.status,
       afterHash: 'PAYMENT_CONFIRMED',
-      reason: `Recorded simulated INR payment receipt ${paymentRef}`,
+      reason: validated.reason || `Recorded simulated INR payment receipt ${paymentRef}`,
     });
 
     return NextResponse.json({
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
       orderId: order.id,
       status: 'PAYMENT_CONFIRMED',
       paymentRef,
+      auditId,
     });
   } catch (err) {
     return formatErrorResponse(err);

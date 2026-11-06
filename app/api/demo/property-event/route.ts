@@ -19,11 +19,7 @@ import { requireRole } from '@/lib/auth/session';
 import { getAdminDbClient, appendAuditLog } from '@/lib/db/admin';
 import { AppError, ErrorCodes, formatErrorResponse } from '@/lib/validation/errors';
 import demoEvents from '@/config/demo-events.json';
-
-export function isPropertyEventsEnabled(): boolean {
-  if (process.env.APP_ENV === 'production') return false;
-  return process.env.DEMO_EVENTS === 'true' || process.env.DEMO_EVENTS === '1';
-}
+import { isPropertyEventsEnabled } from '@/lib/demo/property-events';
 
 const applyEventSchema = z.object({
   propertyId: z.string().uuid('Invalid property ID format'),
@@ -145,7 +141,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 9. Append audit log entry
-    await appendAuditLog({
+    const auditId = await appendAuditLog({
       action: 'property_event_applied',
       actorUserId: auth.userId,
       resourceType: 'property_snapshot',
@@ -158,6 +154,7 @@ export async function POST(req: NextRequest) {
         success: true,
         message: 'Scripted property event applied successfully.',
         snapshot,
+        auditId,
       },
       { status: 201 }
     );

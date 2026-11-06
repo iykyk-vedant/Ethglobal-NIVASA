@@ -130,3 +130,4 @@ export function AccessibleTrendChart({ snapshots }: AccessibleTrendChartProps) {
     </div>
   );
 }
+
