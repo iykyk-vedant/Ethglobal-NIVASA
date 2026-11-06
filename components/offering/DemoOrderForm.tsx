@@ -253,7 +253,7 @@ export function DemoOrderForm({
         onSign={handleSign}
       />
 
-      {/* Submit Button (Never says Invest or Buy now) */}
+      {/* Order submission action */}
       <div className="pt-2">
         <Button
           type="submit"
