@@ -16,6 +16,14 @@ export default async function IssuerDashboardPage() {
   if (!user.roles.includes('admin')) propertiesQuery = propertiesQuery.eq('issuer_id', user.userId);
   const { data: properties } = await propertiesQuery;
 
+  let offeringsQuery = adminDb
+    .from('offerings')
+    .select('id, property_id, token_name, token_symbol, status, ats_asset_ref, token_contract_id, token_evm_address, created_at')
+    .order('created_at', { ascending: false });
+  if (!user.roles.includes('admin')) offeringsQuery = offeringsQuery.eq('issuer_id', user.userId);
+  const { data: offerings } = await offeringsQuery;
+  const propertyNames = new Map((properties || []).map((property) => [property.id, property.name]));
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -28,7 +36,7 @@ export default async function IssuerDashboardPage() {
             Issuer Property Submissions
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">
-            Manage real-world property documentation, track Merkle-rooted evidence manifests, and review verification milestones.
+            Manage property evidence, follow offering proposals, and inspect token and chain status.
           </p>
         </div>
 
@@ -39,6 +47,46 @@ export default async function IssuerDashboardPage() {
           + New Property Submission
         </Link>
       </div>
+
+      <section id="offerings" className="scroll-mt-20 space-y-4" aria-labelledby="issuer-offerings-heading">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="issuer-offerings-heading" className="text-lg font-semibold text-[var(--text-primary)]">My Offerings &amp; Tokens</h2>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">Proposals and their current on-chain deployment status.</p>
+          </div>
+          <span className="text-xs text-[var(--text-secondary)]">{offerings?.length || 0} total</span>
+        </div>
+
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-card)] overflow-hidden shadow-sm divide-y divide-[var(--border)]">
+          {offerings && offerings.length > 0 ? offerings.map((offering) => {
+            const chainReference = offering.token_contract_id || offering.token_evm_address;
+            const statusVariant = offering.status === 'active' ? 'success' : offering.status.startsWith('paused') ? 'warning' : 'pending';
+            return (
+              <article key={offering.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-sm text-[var(--text-primary)]">{offering.token_name}</h3>
+                    <span className="font-mono text-xs text-[var(--text-secondary)]">{offering.token_symbol}</span>
+                    <Badge variant={statusVariant}>{offering.status.replaceAll('_', ' ')}</Badge>
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)]">Property: {propertyNames.get(offering.property_id) || 'Property record'}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    {chainReference ? <>ATS reference: <span className="font-mono">{chainReference}</span></> : 'Token deployment is pending activation and chain confirmation.'}
+                  </p>
+                </div>
+                <Link
+                  href={`/offerings/${offering.id}`}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+                >
+                  View token &amp; chain status <span aria-hidden="true" className="ml-1">→</span>
+                </Link>
+              </article>
+            );
+          }) : (
+            <p className="p-5 text-sm text-[var(--text-secondary)]">No offerings yet. Open a verified property with an approved manifest to create an offering proposal.</p>
+          )}
+        </div>
+      </section>
 
       {/* Properties List */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-card)] overflow-hidden shadow-sm">

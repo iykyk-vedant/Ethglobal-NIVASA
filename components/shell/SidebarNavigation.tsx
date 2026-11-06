@@ -45,10 +45,8 @@ export function SidebarNavigation({
   const navItemsByRole: Record<string, NavItem[]> = {
     issuer: [
       { label: 'Overview', href: '/issuer', icon: LayoutDashboard },
-      { label: 'My Property', href: '/issuer/property', icon: Building2 },
-      { label: 'Evidence Checklist', href: '/issuer/checklist', icon: FileCheck2 },
-      { label: 'Manifests', href: '/issuer/manifests', icon: ScrollText },
-      { label: 'Rights & Offering', href: '/issuer/offering', icon: Coins },
+      { label: 'New Property', href: '/issuer/new', icon: Building2 },
+      { label: 'Offerings & Tokens', href: '/issuer#offerings', icon: Coins },
     ],
     verifier: [
       { label: 'Review Queue', href: '/verifier', icon: ClipboardList },
