@@ -201,16 +201,16 @@
 **Goal:** Safe, idempotent, recoverable settlement. **Highest-risk milestone; no shortcuts.**
 **Refs:** ARCH §9.4, §14, §15.2, §17.4 · PRD FR-5.x · UI §8.7
 
-- [ ] M5.1 `POST /api/investments`: requires `Idempotency-Key` + signed acknowledgement (ARCH §15.2); server verifies signature **and** exact terms vs DB; calls `reserve_units` via RPC; stable error codes (`NOT_ELIGIBLE`, `INSUFFICIENT_UNITS`, `OFFERING_NOT_ACTIVE`, `OFFERING_PAUSED_EVIDENCE`, …).
-- [ ] M5.2 `POST /api/demo/payment-confirmation` (admin, `DEMO_PAYMENTS=true`, refuses in production, audited) → `PAYMENT_CONFIRMED`; DB trigger enqueues `allocate_units` (dedupe key = order ID).
-- [ ] M5.3 `allocate_units` job: set `ALLOCATION_PENDING`; **re-check eligibility + offering active (fail closed → `MANUAL_REVIEW`)**; adapter `prepareIssue` with explicit tx ID; **persist attempt (attempt_no, tx ID, signed-bytes hash) before submit and commit**; submit; mark `ALLOCATION_SUBMITTED`.
-- [ ] M5.4 Confirm step: receipt + Mirror Node → attempt `confirmed`, order `ALLOCATION_CONFIRMED`, enqueue `reconcile_order`.
-- [ ] M5.5 **Unknown-outcome handling** (ARCH §14.2): timeout ⇒ attempt `unknown`; query Mirror by stored tx ID; found-success → continue; found-failed → attempt n+1 with new ID; not found → resubmit same signed bytes, or new attempt only after valid-duration window. **Never two live attempts.**
-- [ ] M5.6 `reconcile_order`: verify issuance event for tx, receiving wallet, unit count, holder balance → `COMPLETED` (**only here**) or `RECONCILIATION_REQUIRED`.
-- [ ] M5.7 Failure path: `ALLOCATION_FAILED` → `REFUND_PENDING` (simulated) or `MANUAL_REVIEW`; never dropped, never complete.
-- [ ] M5.8 Jobs: `expire_reservations`, `reconcile_supply`, `stuck_orders`; issuer-agent daily issuance cap (`ISSUER_DAILY_UNIT_CAP`).
-- [ ] M5.9 `GET /api/investments/:id` (owner-only poll for timeline).
-- [ ] M5.10 Tests: invariants of ARCH §14.9 — reserved+allocated ≤ supply; ≤1 confirmed attempt/order; `COMPLETED` only after reconciliation; replayed job/request/payment changes nothing; payment OK + allocation fail ≠ COMPLETED.
+- [x] M5.1 `POST /api/investments`: requires `Idempotency-Key` + signed acknowledgement (ARCH §15.2); server verifies signature **and** exact terms vs DB; calls `reserve_units` via RPC; stable error codes (`NOT_ELIGIBLE`, `INSUFFICIENT_UNITS`, `OFFERING_NOT_ACTIVE`, `OFFERING_PAUSED_EVIDENCE`, …).
+- [x] M5.2 `POST /api/demo/payment-confirmation` (admin, `DEMO_PAYMENTS=true`, refuses in production, audited) → `PAYMENT_CONFIRMED`; DB trigger enqueues `allocate_units` (dedupe key = order ID).
+- [x] M5.3 `allocate_units` job: set `ALLOCATION_PENDING`; **re-check eligibility + offering active (fail closed → `MANUAL_REVIEW`)**; adapter `prepareIssue` with explicit tx ID; **persist attempt (attempt_no, tx ID, signed-bytes hash) before submit and commit**; submit; mark `ALLOCATION_SUBMITTED`.
+- [x] M5.4 Confirm step: receipt + Mirror Node → attempt `confirmed`, order `ALLOCATION_CONFIRMED`, enqueue `reconcile_order`.
+- [x] M5.5 **Unknown-outcome handling** (ARCH §14.2): timeout ⇒ attempt `unknown`; query Mirror by stored tx ID; found-success → continue; found-failed → attempt n+1 with new ID; not found → resubmit same signed bytes, or new attempt only after valid-duration window. **Never two live attempts.**
+- [x] M5.6 `reconcile_order`: verify issuance event for tx, receiving wallet, unit count, holder balance → `COMPLETED` (**only here**) or `RECONCILIATION_REQUIRED`.
+- [x] M5.7 Failure path: `ALLOCATION_FAILED` → `REFUND_PENDING` (simulated) or `MANUAL_REVIEW`; never dropped, never complete.
+- [x] M5.8 Jobs: `expire_reservations`, `reconcile_supply`, `stuck_orders`; issuer-agent daily issuance cap (`ISSUER_DAILY_UNIT_CAP`).
+- [x] M5.9 `GET /api/investments/:id` (owner-only poll for timeline).
+- [x] M5.10 Tests: invariants of ARCH §14.9 — reserved+allocated ≤ supply; ≤1 confirmed attempt/order; `COMPLETED` only after reconciliation; replayed job/request/payment changes nothing; payment OK + allocation fail ≠ COMPLETED.
 
 **Exit:** an eligible investor ends with a real on-chain balance and an order that reached `COMPLETED` through reconciliation; duplicate key / replayed payment allocate nothing extra.
 
