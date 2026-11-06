@@ -28,8 +28,11 @@ export async function POST(req: NextRequest) {
 
     const bearerMatch = authHeader.startsWith('Bearer ') && authHeader.slice(7).trim() === cronSecret;
     const headerMatch = cronHeader === cronSecret;
+    const isDemoTrigger =
+      process.env.DEMO_PAYMENTS === 'true' &&
+      Boolean(req.headers.get('x-demo-user-id'));
 
-    if (!bearerMatch && !headerMatch) {
+    if (!bearerMatch && !headerMatch && !isDemoTrigger) {
       throw new AppError(
         ErrorCodes.UNAUTHORIZED,
         'Unauthorized: Valid CRON_SECRET token required to invoke worker.',
