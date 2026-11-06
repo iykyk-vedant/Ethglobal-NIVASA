@@ -17,6 +17,9 @@ export const ErrorCodes = {
   // System & Security error codes
   UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
+  NOT_FOUND: 'NOT_FOUND',
+  CONFLICT: 'CONFLICT',
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
   INVALID_STATE_TRANSITION: 'INVALID_STATE_TRANSITION',
   BAD_REQUEST: 'BAD_REQUEST',
   RATE_LIMITED: 'RATE_LIMITED',
@@ -81,5 +84,16 @@ export function successResponse<T>(data: T, status: number = 200): NextResponse<
     },
     { status }
   );
+}
+
+export function formatErrorResponse(err: unknown): NextResponse<ApiErrorResponse> {
+  if (err instanceof AppError) {
+    return errorResponse(err.code, err.message, err.statusCode, err.details);
+  }
+  if (err && typeof err === 'object' && 'issues' in err) {
+    return errorResponse(ErrorCodes.BAD_REQUEST, 'Validation failed', 400, (err as any).issues);
+  }
+  const message = err instanceof Error ? err.message : 'Internal server error';
+  return errorResponse(ErrorCodes.INTERNAL_ERROR, message, 500);
 }
 
