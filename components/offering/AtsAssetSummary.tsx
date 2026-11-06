@@ -111,3 +111,4 @@ export const AtsAssetSummary: React.FC<AtsAssetSummaryProps> = ({
     </div>
   );
 };
+

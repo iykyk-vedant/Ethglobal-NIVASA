@@ -123,3 +123,4 @@ export const RightsDiffViewer: React.FC<RightsDiffViewerProps> = ({
     </div>
   );
 };
+

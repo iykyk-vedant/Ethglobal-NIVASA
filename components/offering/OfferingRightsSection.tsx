@@ -143,3 +143,4 @@ export const OfferingRightsSection: React.FC<OfferingRightsSectionProps> = ({
     </div>
   );
 };
+

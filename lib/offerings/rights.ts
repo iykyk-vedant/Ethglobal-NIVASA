@@ -65,3 +65,4 @@ export function computeConfigurationHash(config: {
   const hash = sha256(Buffer.from(canonical, 'utf8'));
   return `0x${hash.toLowerCase()}`;
 }
+

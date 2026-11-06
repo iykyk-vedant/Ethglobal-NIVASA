@@ -128,3 +128,4 @@ export const RightsVersionCard: React.FC<RightsVersionCardProps> = ({
     </div>
   );
 };
+

@@ -73,3 +73,4 @@ export async function processSetRightsDocument(payload: SetRightsDocumentPayload
     documentHash: rights.rights_document_hash,
   };
 }
+

@@ -39,3 +39,4 @@ export async function appendAuditLog(params: AuditLogParams): Promise<number | n
 
   return Number(data);
 }
+

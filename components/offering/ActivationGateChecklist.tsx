@@ -252,3 +252,4 @@ export const ActivationGateChecklist: React.FC<ActivationGateChecklistProps> = (
     </div>
   );
 };
+

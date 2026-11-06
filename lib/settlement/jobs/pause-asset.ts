@@ -62,3 +62,4 @@ export async function processPauseAsset(payload: PauseAssetPayload) {
     isPaused: true,
   };
 }
+

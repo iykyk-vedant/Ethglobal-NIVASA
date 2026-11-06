@@ -40,3 +40,4 @@ for (const page of pages) {
 }
 
 console.log('Done capturing M9 screenshots.');
+

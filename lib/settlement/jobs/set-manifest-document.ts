@@ -86,3 +86,4 @@ export async function processSetManifestDocument(payload: SetManifestDocumentPay
     merkleRoot: manifest.merkle_root,
   };
 }
+

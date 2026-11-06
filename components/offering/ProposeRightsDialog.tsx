@@ -241,3 +241,4 @@ export const ProposeRightsDialog: React.FC<ProposeRightsDialogProps> = ({
     </Dialog>
   );
 };
+
