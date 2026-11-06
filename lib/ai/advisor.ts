@@ -14,6 +14,7 @@ export interface RunAnalysisParams {
   snapshotTo?: number;
   investorId?: string | null;
   preferences?: InvestorPreferences;
+  previousEpisodeId?: string | null;
 }
 
 export interface AnalysisOutcome {
@@ -295,6 +296,7 @@ Generate the concise ARCH §16.7 JSON explanation. Include 2 to 4 key indicators
         property_id: params.propertyId,
         snapshot_from: snapFromNo,
         snapshot_to: snapToNo,
+        previous_episode_id: params.previousEpisodeId || null,
         request_id: inference.requestId,
         provider: '0g',
         model_name: inference.model,

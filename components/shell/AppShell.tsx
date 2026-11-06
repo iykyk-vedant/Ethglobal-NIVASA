@@ -39,8 +39,9 @@ export function AppShell({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [serverFaultsEnabled, setServerFaultsEnabled] = useState(demoFlags?.faultsEnabled ?? false);
+  const [serverEventsEnabled, setServerEventsEnabled] = useState(demoFlags?.eventsEnabled ?? false);
 
-  // Query server state for active demo flags (Task 2: Persistent banner from server state)
+  // Query server state for active demo flags (Task 2 & M13: Persistent banner from server state)
   React.useEffect(() => {
     let isMounted = true;
     fetch('/api/demo/faults')
@@ -51,12 +52,23 @@ export function AppShell({
         }
       })
       .catch(() => {});
+
+    fetch('/api/demo/property-event')
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && typeof data.enabled === 'boolean') {
+          setServerEventsEnabled(data.enabled);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, []);
 
   const activeFaultsFlag = demoFlags?.faultsEnabled ?? serverFaultsEnabled;
+  const activeEventsFlag = demoFlags?.eventsEnabled ?? serverEventsEnabled;
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-page text-text-primary">
@@ -122,7 +134,7 @@ export function AppShell({
           <DemoFlagBanner
             paymentsEnabled={demoFlags.paymentsEnabled}
             faultsEnabled={activeFaultsFlag}
-            eventsEnabled={demoFlags.eventsEnabled}
+            eventsEnabled={activeEventsFlag}
           />
 
           <div className="flex-1 py-6">

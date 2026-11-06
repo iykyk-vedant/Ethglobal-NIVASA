@@ -39,7 +39,21 @@ export function validateAiResponse(
     }
   }
 
-  // 2. Zod Schema validation
+  // 2. Normalize empty supporting_evidence_ids to ['unsupported'] per ARCH §16.4
+  if (parsed && typeof parsed === 'object' && 'changes' in (parsed as Record<string, unknown>)) {
+    const rawChanges = (parsed as Record<string, unknown>).changes;
+    if (Array.isArray(rawChanges)) {
+      for (const ch of rawChanges) {
+        if (ch && typeof ch === 'object') {
+          if (!Array.isArray(ch.supporting_evidence_ids) || ch.supporting_evidence_ids.length === 0) {
+            ch.supporting_evidence_ids = ['unsupported'];
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Zod Schema validation
   const schemaResult = aiResponseSchema.safeParse(parsed);
   if (!schemaResult.success) {
     const formattedErrors = schemaResult.error.errors.map(
@@ -83,11 +97,18 @@ export function validateAiResponse(
   for (const num of metrics.allowed_numbers) {
     const clean = num.replace(/,/g, '').trim();
     approvedNumbers.add(clean);
-    // Strip decimal if .00
-    if (clean.includes('.')) {
-      const parts = clean.split('.');
-      if (Number(parts[1]) === 0) {
-        approvedNumbers.add(parts[0]);
+    const absClean = clean.replace(/^-/, '');
+    approvedNumbers.add(absClean);
+
+    // Support standard whole-number representations and rounded percentages (e.g. 50 from 50.62)
+    if (absClean.includes('.')) {
+      const parts = absClean.split('.');
+      approvedNumbers.add(parts[0]);
+      const floatVal = parseFloat(absClean);
+      if (!isNaN(floatVal)) {
+        approvedNumbers.add(String(Math.round(floatVal)));
+        approvedNumbers.add(String(Math.floor(floatVal)));
+        approvedNumbers.add(String(Math.ceil(floatVal)));
       }
     }
   }

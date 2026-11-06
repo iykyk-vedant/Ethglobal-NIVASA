@@ -52,53 +52,41 @@ describe('Milestone M10: D2 Evidence-Drift Protocol & Asset Pause/Resume', () =>
   let nextManifestId: string;
   let nextManifestRoot: string;
 
-  beforeAll(async () => {
-    // 1. Reset offering columns referencing manifests
-    await adminDb
-      .from('offerings')
-      .update({
-        status: 'active',
-        drift_trigger: null,
-        paused_reason: null,
-        paused_evidence_drift_at: null,
-        drift_manifest_id: null,
-        drift_uploader_id: null,
-        current_manifest_id: '22222222-2222-2222-2222-222222222222',
-      })
-      .eq('id', SEEDED_OFFERING_ID);
-
-    // 2. Delete any verifications pointing to test manifests > 1
-    const { data: testManifests } = await adminDb
-      .from('evidence_manifests')
-      .select('id')
-      .eq('property_id', SEEDED_PROPERTY_ID)
-      .gt('version', 1);
-
-    if (testManifests && testManifests.length > 0) {
-      const ids = testManifests.map((m) => m.id);
-      await adminDb.from('property_verifications').delete().in('manifest_id', ids);
+  async function resetCleanBaseline() {
+    const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    if (dbUrl) {
+      const { Client } = await import('pg');
+      const client = new Client(dbUrl);
+      await client.connect();
+      try {
+        await client.query('ALTER TABLE property_snapshots DISABLE TRIGGER trg_snapshot_immutability');
+        await client.query('DELETE FROM property_snapshots WHERE snapshot_no > 1');
+        await client.query('ALTER TABLE property_snapshots ENABLE TRIGGER trg_snapshot_immutability');
+        await client.query(
+          "UPDATE offerings SET drift_manifest_id = null, current_manifest_id = '22222222-2222-2222-2222-222222222222', status = 'active', drift_trigger = null, paused_reason = null, paused_evidence_drift_at = null WHERE id = $1",
+          [SEEDED_OFFERING_ID]
+        );
+        await client.query(
+          "DELETE FROM property_documents WHERE property_id = $1 AND source_reference = 'KF-MUM-2026-REV-002'",
+          [SEEDED_PROPERTY_ID]
+        );
+        await client.query(
+          "DELETE FROM property_verifications WHERE manifest_id != '22222222-2222-2222-2222-222222222222'"
+        );
+        await client.query(
+          "DELETE FROM evidence_manifests WHERE id != '22222222-2222-2222-2222-222222222222'"
+        );
+        await client.query(
+          "UPDATE evidence_manifests SET status = 'approved', version = 1 WHERE id = '22222222-2222-2222-2222-222222222222'"
+        );
+      } finally {
+        await client.end();
+      }
     }
+  }
 
-    // 3. Delete extraneous manifests > 1
-    await adminDb
-      .from('evidence_manifests')
-      .delete()
-      .eq('property_id', SEEDED_PROPERTY_ID)
-      .gt('version', 1);
-
-    // 4. Clean up any uploaded test documents
-    await adminDb
-      .from('property_documents')
-      .delete()
-      .eq('property_id', SEEDED_PROPERTY_ID)
-      .eq('source_reference', 'KF-MUM-2026-REV-002');
-
-    // 5. Ensure Manifest v1 is approved
-    await adminDb
-      .from('evidence_manifests')
-      .update({ status: 'approved' })
-      .eq('property_id', SEEDED_PROPERTY_ID)
-      .eq('version', 1);
+  beforeAll(async () => {
+    await resetCleanBaseline();
 
     // Ensure offering is active with approved manifest for test baseline
     const { data: manifest } = await adminDb
@@ -439,5 +427,9 @@ describe('Milestone M10: D2 Evidence-Drift Protocol & Asset Pause/Resume', () =>
     expect(checkResult.success).toBe(true);
     expect(checkResult.checkedCount).toBeGreaterThanOrEqual(1);
     expect(checkResult.results?.[0]?.driftDetected).toBe(false); // Currently clean and matching!
+  });
+
+  afterAll(async () => {
+    await resetCleanBaseline();
   });
 });

@@ -53,3 +53,14 @@ export const analyzeOfferingSchema = z.object({
 
 export type AnalyzeOfferingInput = z.infer<typeof analyzeOfferingSchema>;
 
+export const analyzeChangesSchema = z.object({
+  propertyId: z.string().uuid('Invalid property ID format'),
+  snapshotFrom: z.number().int().positive().default(1),
+  snapshotTo: z.number().int().positive().default(2),
+  previousEpisodeId: z.string().uuid('Invalid previous episode ID format').optional().nullable(),
+  preferences: investorProfileSchema.optional(),
+});
+
+export type AnalyzeChangesInput = z.infer<typeof analyzeChangesSchema>;
+
+

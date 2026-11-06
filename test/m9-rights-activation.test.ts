@@ -18,7 +18,7 @@ import { NextRequest } from 'next/server';
 import { getAdminDbClient } from '@/lib/db/admin';
 import { computeRightsDocumentHash, computeConfigurationHash } from '@/lib/offerings/rights';
 import { SdkAtsAdapter } from '@/lib/hedera/ats-adapter';
-import { readDocument, readTokenSupply } from '@/lib/hedera/chain-reads';
+import { readDocument, readTokenSupply, clearChainReadCache } from '@/lib/hedera/chain-reads';
 import { processSetRightsDocument } from '@/lib/settlement/jobs/set-rights-document';
 import { processSetManifestDocument } from '@/lib/settlement/jobs/set-manifest-document';
 import { processVerifyActivation } from '@/lib/settlement/jobs/verify-activation';
@@ -45,6 +45,32 @@ describe('Milestone M9: Rights & D1 Activation Gate (Evidence-Gated Issuance)', 
   let testUnverifiedPropertyId: string;
 
   beforeAll(async () => {
+    const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    if (dbUrl) {
+      const { Client } = await import('pg');
+      const client = new Client(dbUrl);
+      await client.connect();
+      try {
+        await client.query('ALTER TABLE property_snapshots DISABLE TRIGGER trg_snapshot_immutability');
+        await client.query('DELETE FROM property_snapshots WHERE snapshot_no > 1');
+        await client.query('ALTER TABLE property_snapshots ENABLE TRIGGER trg_snapshot_immutability');
+        await client.query(
+          "UPDATE offerings SET drift_manifest_id = null, current_manifest_id = '22222222-2222-2222-2222-222222222222', status = 'active' WHERE id = '33333333-3333-3333-3333-333333333333'"
+        );
+        await client.query(
+          "DELETE FROM property_verifications WHERE manifest_id != '22222222-2222-2222-2222-222222222222'"
+        );
+        await client.query(
+          "DELETE FROM evidence_manifests WHERE id != '22222222-2222-2222-2222-222222222222'"
+        );
+        await client.query(
+          "UPDATE evidence_manifests SET status = 'approved', version = 1 WHERE id = '22222222-2222-2222-2222-222222222222'"
+        );
+      } finally {
+        await client.end();
+      }
+    }
+
     // Create an unverified draft property for testing MANIFEST_NOT_APPROVED guard
     const { data: unverifiedProp } = await adminDb
       .from('properties')
@@ -330,17 +356,27 @@ describe('Milestone M9: Rights & D1 Activation Gate (Evidence-Gated Issuance)', 
     expect(manifestJobResult.txId).toMatch(/^0\.0\.\d+@\d+\.\d+$/);
 
     // 3. Read back anchored documents from Hedera Mirror Node
-    const [chainRights, chainManifest] = await Promise.all([
-      readDocument('rights'),
-      readDocument('evidence-manifest'),
-    ]);
-
+    clearChainReadCache();
+    const chainRights = await readDocument('rights');
     expect(chainRights.status).toBe('CONFIRMED');
     expect(chainRights.data?.hash.toLowerCase()).toBe(rightsJobResult.documentHash.toLowerCase());
 
+    const cleanJobRoot = manifestJobResult.merkleRoot.toLowerCase().replace(/^0x/, '');
+    let chainManifest = await readDocument('evidence-manifest');
+    for (let i = 0; i < 5; i++) {
+      if (
+        chainManifest.status === 'CONFIRMED' &&
+        chainManifest.data?.hash.toLowerCase().replace(/^0x/, '') === cleanJobRoot
+      ) {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+      clearChainReadCache();
+      chainManifest = await readDocument('evidence-manifest');
+    }
+
     expect(chainManifest.status).toBe('CONFIRMED');
     const cleanChainHash = chainManifest.data?.hash.toLowerCase().replace(/^0x/, '');
-    const cleanJobRoot = manifestJobResult.merkleRoot.toLowerCase().replace(/^0x/, '');
     expect(cleanChainHash).toBe(cleanJobRoot);
   }, 45000); // 45-second timeout for Hedera Testnet consensus
 

@@ -17,6 +17,7 @@ import { OfferingRightsSection } from '@/components/offering/OfferingRightsSecti
 import { AtsAssetSummary } from '@/components/offering/AtsAssetSummary';
 import { SupplySummary } from '@/components/offering/SupplySummary';
 import { ResumeOfferingButton } from '@/components/offering/ResumeOfferingButton';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,6 +110,27 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
   const totalUnitsInt = parseInt(offering.total_units || '10000', 10);
   const remainingSupply = Math.max(0, totalUnitsInt - chainSupplyNum);
 
+  // 7. Check if new property snapshots exist for Property Intelligence prompt (Task 5: Reason to return)
+  const { data: latestSnapshot } = await admin
+    .from('property_snapshots')
+    .select('snapshot_no, created_at, as_of')
+    .eq('property_id', offering.property_id)
+    .order('snapshot_no', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: latestEpisode } = await admin
+    .from('ai_episodes')
+    .select('snapshot_to, created_at')
+    .eq('property_id', offering.property_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const hasNewSnapshot =
+    latestSnapshot &&
+    (!latestEpisode || latestSnapshot.snapshot_no > latestEpisode.snapshot_to);
+
   return (
     <div className="space-y-6 pb-12" data-testid="offering-detail-page">
       {/* Breadcrumb Navigation */}
@@ -160,6 +182,34 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
       {/* High-Visibility Evidence Drift Warning Banner */}
       {offering.status === 'paused_evidence_drift' && (
         <EvidenceDriftBanner driftDate={offering.paused_evidence_drift_at || offering.updated_at} />
+      )}
+
+      {/* Property Intelligence Update Prompt (Reason to Return - Task 5) */}
+      {hasNewSnapshot && (
+        <aside
+          aria-label="New property snapshot available"
+          className="p-4 rounded-xl border border-brand-primary/30 bg-brand-primary/5 flex flex-wrap items-center justify-between gap-3 shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-text-primary">
+                New Property Evidence Snapshot Available
+              </h4>
+              <p className="text-xs text-text-secondary">
+                Snapshot #{latestSnapshot?.snapshot_no} was published on{' '}
+                {new Date(latestSnapshot?.as_of || '').toLocaleDateString()}. Run verifiable change analysis to see what moved.
+              </p>
+            </div>
+          </div>
+          <Link href={`/intelligence/${offering.property_id}`}>
+            <Button className="bg-brand-primary text-white hover:bg-brand-primary/90 text-xs flex items-center gap-1.5 shadow-sm">
+              Analyze What Changed <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </aside>
       )}
 
       {/* Main Grid: Left 2 cols (Overview + D1 Gate + Rights), Right 1 col (Chain + Supply + Order) */}

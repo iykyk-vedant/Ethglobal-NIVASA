@@ -5,13 +5,13 @@
       "property_id": "11111111-1111-1111-1111-111111111111",
       "snapshot_no": 2,
       "event_type": "appraisal_update_and_occupancy_shift",
-      "label": "New Valuation Report Uploaded",
+      "label": "New Valuation Report Uploaded (ARCH §16.3)",
       "as_of": "2026-11-06T00:00:00.000Z",
-      "valuation_date": "2026-11-01T00:00:00.000Z",
-      "valuation_amount_inr": "252000000.00",
-      "occupancy_pct": "88.00",
-      "annual_rent_inr": "20400000.00",
-      "operating_costs_inr": "4200000.00",
+      "valuation_date": "2026-11-01",
+      "valuation_amount_inr": "105000000.00",
+      "occupancy_pct": "85.00",
+      "annual_rent_inr": "6800000.00",
+      "operating_costs_inr": "1600000.00",
       "provenance": "simulated",
       "event_note": "New independent valuation report uploaded reflecting updated market capitalisation rates. IT tenant scaled down partial floor plate during lease renewal.",
       "checklist_completeness_pct": "100.00",
@@ -24,4 +24,3 @@
     }
   ]
 }
-
