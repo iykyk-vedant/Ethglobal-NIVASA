@@ -221,13 +221,13 @@
 **Goal:** Make the thin slice usable and inspectable.
 **Refs:** UI §8.2, §8.5, §8.7, §11.4 · ARCH §14.6, §14.8 · PRD FR-5.9, FR-6.6
 
-- [ ] M6.1 `/offerings/[id]` (UI §8.2): asset overview with **SIMULATED** labels + provenance, rights summary (represents / does not represent), evidence panel, token/chain panel (ATS ref, address, chain 296, cap/supply with chain-confirmed vs DB-reported distinction, last sync), participation panel (investor only; copy never says Invest/Buy now), offering-state UI table.
-- [ ] M6.2 `/investor` dashboard (UI §8.5): wallet status, eligibility, **chain-confirmed holdings separate from pending orders**, last chain sync, recent orders; **no ROI/profit/expected-income KPIs**; stale-balance label when Mirror lags.
-- [ ] M6.3 `DemoOrderForm` + `SignedAcknowledgementPanel` (UI §8.7): server-computed available supply/min/max, exact-decimal total, full acknowledgement text, wallet signature, `Idempotency-Key`, pending state; no checkout/card fields.
-- [ ] M6.4 `/investor/orders/[id]`: `SettlementTimeline` (every state, timestamp, source, attempt, tx ID, HashScan link), `AllocationAttemptList`; `unknown` shown as "Checking transaction outcome"; no optimistic success toast.
-- [ ] M6.5 `scripts/restriction-proof.ts` (ARCH §14.8): eligible vs unregistered wallets attempt transfers; record tx IDs, expected/observed outcome; write audit action `restriction_proof`. Keys stay in the **operator env**, not the web app.
-- [ ] M6.6 `ReceiptLinkCard` (share URL generated from `receipt_token`).
-- [ ] M6.7 Polling live-region updates for order status (announced without stealing focus).
+- [x] M6.1 `/offerings/[id]` (UI §8.2): asset overview with **SIMULATED** labels + provenance, rights summary (represents / does not represent), evidence panel, token/chain panel (ATS ref, address, chain 296, cap/supply with chain-confirmed vs DB-reported distinction, last sync), participation panel (investor only; copy never says Invest/Buy now), offering-state UI table.
+- [x] M6.2 `/investor` dashboard (UI §8.5): wallet status, eligibility, **chain-confirmed holdings separate from pending orders**, last chain sync, recent orders; **no ROI/profit/expected-income KPIs**; stale-balance label when Mirror lags.
+- [x] M6.3 `DemoOrderForm` + `SignedAcknowledgementPanel` (UI §8.7): server-computed available supply/min/max, exact-decimal total, full acknowledgement text, wallet signature, `Idempotency-Key`, pending state; no checkout/card fields.
+- [x] M6.4 `/investor/orders/[id]`: `SettlementTimeline` (every state, timestamp, source, attempt, tx ID, HashScan link), `AllocationAttemptList`; `unknown` shown as "Checking transaction outcome"; no optimistic success toast.
+- [x] M6.5 `scripts/restriction-proof.ts` (ARCH §14.8): eligible vs unregistered wallets attempt transfers; record tx IDs, expected/observed outcome; write audit action `restriction_proof`. Keys stay in the **operator env**, not the web app.
+- [x] M6.6 `ReceiptLinkCard` (share URL generated from `receipt_token`).
+- [x] M6.7 Polling live-region updates for order status (announced without stealing focus).
 
 **Exit (Tier A demo path):** seeded property → investor binds wallet → eligible → order → simulated payment → allocation → `COMPLETED`; HashScan links work; restriction proof recorded.
 
@@ -426,7 +426,7 @@ Track and update with results: live deadline + prize requirements · ETHGlobal r
 
 | Date/time (IST) | Milestone.Task | Status | Evidence (tx ID / test / file) | Notes / deviations |
 | --- | --- | --- | --- | --- |
-| | | | | |
+| 2026-11-06 12:20 | M6.1–M6.7 | DONE | Tx 0.0.11330246@1793947315.107376528 (SUCCESS), Tx 0.0.11330247@1793947319.338878087 (REVERT), `test/m6-investor-offering-ui.test.ts` (9/9 pass), Audit ID #128 | Full Tier A thin-slice and restriction proof complete; responsive screenshots captured across 375/768/1024/1440 |
 
 ---
 
