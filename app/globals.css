@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+
+  --brand-primary: #142B27;
+  --brand-secondary: #24483D;
+  --brand-accent: #C39A60;
+
+  --surface-page: #F5F3ED;
+  --surface-card: #FFFFFF;
+  --surface-muted: #E5E9E3;
+
+  --text-primary: #27332F;
+  --text-secondary: #59685F;
+  --border: #DFE3DC;
+  --focus: #24483D;
+
+  --status-success: #1F704B;
+  --status-warning: #94600E;
+  --status-danger: #A93E36;
+  --status-info: #176B87;
+  --status-pending: #59685F;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-card: 0 2px 8px rgba(20, 43, 39, 0.06);
+  --shadow-popover: 0 12px 32px rgba(20, 43, 39, 0.14);
+}
+
+body {
+  background-color: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+
