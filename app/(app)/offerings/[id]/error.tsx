@@ -24,10 +24,10 @@ export default function OfferingError({
         <AlertTriangle className="w-10 h-10 text-status-danger mx-auto" />
         <div className="space-y-1">
           <h1 className="text-xl font-bold text-text-primary">
-            Failed to Load Demo Offering
+            Offering temporarily unavailable
           </h1>
           <p className="text-xs text-text-secondary max-w-md mx-auto">
-            The offering data could not be retrieved from the database or Hedera Testnet Mirror Node.
+            The server could not load this offering. Check the deployment function logs using this correlation ID. Confirm the production database configuration and offering record; chain read outages are shown as unavailable when the page can otherwise load.
           </p>
         </div>
 

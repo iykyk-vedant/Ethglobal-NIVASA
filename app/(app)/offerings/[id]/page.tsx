@@ -32,7 +32,9 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
   // 1. Fetch Offering
   const { data: offering, error: offeringErr } = await admin
     .from('offerings')
-    .select('*')
+    // PostgREST may decode PostgreSQL numeric as a JS number. Cast the price
+    // to text in SQL so decimal helpers never receive a lossy JS Number.
+    .select('*, unit_price_inr_text:unit_price_inr::text')
     .eq('id', id)
     .single();
 
@@ -352,7 +354,7 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
           <SupplySummary
             maxSupply={offering.total_units || '10000'}
             chainConfirmedSupply={chainSupplyStr}
-            unitPriceInr={toMoneyString(offering.unit_price_inr)}
+            unitPriceInr={toMoneyString(offering.unit_price_inr_text)}
             lastSyncAt={chainSupplyResult.lastSyncAt}
           />
 
@@ -382,7 +384,7 @@ export default async function OfferingPage({ params }: OfferingPageProps) {
             offeringStatus={offering.status}
             rightsVersion={offering.current_rights_version}
             rightsDocumentHash={rights?.rights_document_hash || ''}
-            unitPriceInr={toMoneyString(offering.unit_price_inr)}
+            unitPriceInr={toMoneyString(offering.unit_price_inr_text)}
             minimumUnits={parseInt(offering.minimum_units || '1', 10)}
             maximumUnitsPerInvestor={parseInt(offering.maximum_units_per_investor || '500', 10)}
             remainingSupply={remainingSupply}
