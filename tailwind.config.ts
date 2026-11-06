@@ -48,6 +48,11 @@ const config: Config = {
         card: "var(--shadow-card)",
         popover: "var(--shadow-popover)",
       },
+      transitionDuration: {
+        fast: "var(--motion-fast)",
+        normal: "var(--motion-normal)",
+        slow: "var(--motion-slow)",
+      },
     },
   },
   plugins: [],

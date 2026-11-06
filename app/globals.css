@@ -31,6 +31,10 @@
 
   --shadow-card: 0 2px 8px rgba(20, 43, 39, 0.06);
   --shadow-popover: 0 12px 32px rgba(20, 43, 39, 0.14);
+
+  --motion-fast: 150ms;
+  --motion-normal: 220ms;
+  --motion-slow: 300ms;
 }
 
 body {
@@ -40,3 +44,12 @@ body {
   min-height: 100vh;
 }
 
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

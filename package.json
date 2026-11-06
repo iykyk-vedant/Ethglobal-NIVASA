@@ -8,6 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
+    "lint:tokens": "node scripts/lint-tokens.mjs",
     "test": "vitest run",
     "adversarial": "node -e \"console.error('Adversarial suite not implemented yet'); process.exit(1)\"",
     "env:check": "node scripts/env-check.mjs",
